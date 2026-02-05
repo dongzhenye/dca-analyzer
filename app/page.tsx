@@ -28,6 +28,13 @@ const CONSTANTS = {
 const formatUSD = (n: number) =>
   `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
+// Sort price levels: non-zero descending, zeros at end
+const sortPriceLevels = (levels: number[]) => {
+  const nonZero = levels.filter((p) => p > 0).sort((a, b) => b - a);
+  const zeros = levels.filter((p) => p === 0);
+  return [...nonZero, ...zeros];
+};
+
 // ============================================================================
 // Configuration - All customizable values in one place
 // ============================================================================
@@ -592,6 +599,15 @@ export default function Home() {
                         setConfig(newConfig);
                         syncCustomLevelsToConfig(newConfig);
                       }}
+                      onBlur={() => {
+                        const sortedLevels = sortPriceLevels(config.priceLevels);
+                        // Only update if order changed
+                        if (sortedLevels.some((p, i) => p !== config.priceLevels[i])) {
+                          const newConfig = { ...config, priceLevels: sortedLevels };
+                          setConfig(newConfig);
+                          syncCustomLevelsToConfig(newConfig);
+                        }
+                      }}
                       className={`w-24 px-2 py-1.5 bg-zinc-800 border rounded text-sm font-mono focus:outline-none focus:border-emerald-500 ${
                         price > 0 ? "border-zinc-700" : "border-zinc-800 text-zinc-600"
                       }`}
@@ -605,7 +621,49 @@ export default function Home() {
 
               {/* Section 4: Rebound Simulation Range */}
               <div>
-                <label className="text-xs text-zinc-500 block mb-2">反弹模拟范围</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-xs text-zinc-500">反弹模拟范围</label>
+                  <button
+                    onClick={() => {
+                      const activeLevels = config.priceLevels.filter((p) => p > 0);
+                      if (activeLevels.length === 0) return;
+
+                      const minLevel = Math.min(...activeLevels);
+                      const maxLevel = Math.max(...activeLevels);
+                      const targetStepCount = 40; // Aim for ~40 data points
+
+                      // Calculate raw range: min-1step to max+1step
+                      // First estimate step, then calculate final range
+                      const rawRange = maxLevel - minLevel;
+                      const rawStep = rawRange / (targetStepCount - 2); // Reserve 2 steps for margins
+
+                      // Round step to nice number (1000, 2000, 5000, 10000, etc.)
+                      const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+                      const normalized = rawStep / magnitude;
+                      let niceStep: number;
+                      if (normalized <= 1) niceStep = magnitude;
+                      else if (normalized <= 2) niceStep = 2 * magnitude;
+                      else if (normalized <= 5) niceStep = 5 * magnitude;
+                      else niceStep = 10 * magnitude;
+
+                      // Align min/max to step, then add 1 step margin
+                      const alignedMin = Math.floor(minLevel / niceStep) * niceStep;
+                      const alignedMax = Math.ceil(maxLevel / niceStep) * niceStep;
+                      const newMin = alignedMin - niceStep;
+                      const newMax = alignedMax + niceStep;
+
+                      setConfig({
+                        ...config,
+                        reboundMin: newMin,
+                        reboundMax: newMax,
+                        reboundStep: niceStep,
+                      });
+                    }}
+                    className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors"
+                  >
+                    [推荐值]
+                  </button>
+                </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="text-xs text-zinc-600">最低价</label>
