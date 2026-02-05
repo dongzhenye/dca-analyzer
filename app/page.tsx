@@ -126,7 +126,8 @@ interface Stats {
 function calculateStats(
   levels: PriceLevel[],
   reboundPrice: number,
-  ath: number
+  ath: number,
+  maxPosition: number
 ): Stats {
   const filledLevels = levels.filter((l) => l.price >= reboundPrice);
 
@@ -134,8 +135,9 @@ function calculateStats(
     return { totalPosition: 0, totalCost: 0, avgCost: 0, valueAtATH: 0, profit: 0, returnRate: 0 };
   }
 
-  const totalPosition = filledLevels.reduce((sum, l) => sum + l.position, 0);
-  const totalCost = filledLevels.reduce((sum, l) => sum + l.position * l.price, 0);
+  // position is a fraction (0-1), multiply by maxPosition to get actual units
+  const totalPosition = filledLevels.reduce((sum, l) => sum + l.position, 0) * maxPosition;
+  const totalCost = filledLevels.reduce((sum, l) => sum + l.position * l.price, 0) * maxPosition;
   const avgCost = totalCost / totalPosition;
   const valueAtATH = totalPosition * ath;
   const profit = valueAtATH - totalCost;
@@ -268,7 +270,7 @@ export default function Home() {
       return {
         name: strategy,
         label: STRATEGY_LABELS[strategy].name,
-        ...calculateStats(strategyLevels, reboundPrice, config.ath),
+        ...calculateStats(strategyLevels, reboundPrice, config.ath, config.maxPosition),
       };
     });
   }, [activePriceLevels, strategies, reboundPrice, config.ath]);
@@ -300,7 +302,7 @@ export default function Home() {
         label: strategyName === 'custom' ? '自定义' : STRATEGY_LABELS[strategyName].name,
         points: prices.map((reboundP) => ({
           x: reboundP,
-          y: calculateStats(strategyLevels, reboundP, config.ath).profit,
+          y: calculateStats(strategyLevels, reboundP, config.ath, config.maxPosition).profit,
         })),
       };
     });
@@ -919,7 +921,7 @@ export default function Home() {
               const maxPos = config.maxPosition;
 
               // Calculate custom strategy stats from customLevels (not levels, which changes based on mode)
-              const customStats = calculateStats(customLevels, reboundPrice, config.ath);
+              const customStats = calculateStats(customLevels, reboundPrice, config.ath, config.maxPosition);
 
               // Determine current display strategy
               const currentStrategyName = isCustomMode || activeStrategy === null ? 'custom' : activeStrategy;
