@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 // ============================================================================
 // Constants - Magic numbers extracted for maintainability
@@ -51,7 +51,6 @@ interface Config {
   reboundMin: number;
   reboundMax: number;
   reboundStep: number;
-  reboundDefault: number;
 }
 
 const DEFAULT_CONFIG: Config = {
@@ -64,7 +63,6 @@ const DEFAULT_CONFIG: Config = {
   reboundMin: 35000,
   reboundMax: 75000,
   reboundStep: 1000,
-  reboundDefault: 55000,
 };
 
 // ============================================================================
@@ -200,7 +198,40 @@ export default function Home() {
     }));
   }, [isCustomMode, customLevels, selectedStrategy, strategies, activePriceLevels]);
 
-  const [reboundPrice, setReboundPrice] = useState(config.reboundDefault);
+  const [reboundPrice, setReboundPrice] = useState(() => {
+    // Initialize to middle of range
+    const { reboundMin, reboundMax, reboundStep } = DEFAULT_CONFIG;
+    const middle = (reboundMin + reboundMax) / 2;
+    return Math.round((middle - reboundMin) / reboundStep) * reboundStep + reboundMin;
+  });
+
+  // Auto-adjust reboundPrice when rebound range changes
+  useEffect(() => {
+    const { reboundMin, reboundMax, reboundStep } = config;
+    if (reboundMin >= reboundMax || reboundStep <= 0) return;
+
+    // Calculate middle value aligned to step
+    const middle = (reboundMin + reboundMax) / 2;
+    const alignedMiddle = Math.round((middle - reboundMin) / reboundStep) * reboundStep + reboundMin;
+    const clampedMiddle = Math.max(reboundMin, Math.min(reboundMax, alignedMiddle));
+
+    // Use functional update to access current reboundPrice
+    setReboundPrice((currentPrice) => {
+      // Clamp current price to valid range and align to step
+      const alignedPrice = Math.round((currentPrice - reboundMin) / reboundStep) * reboundStep + reboundMin;
+      const clampedPrice = Math.max(reboundMin, Math.min(reboundMax, alignedPrice));
+
+      // If current price is out of range or not aligned, reset to middle
+      if (currentPrice < reboundMin || currentPrice > reboundMax) {
+        return clampedMiddle;
+      }
+      // If just misaligned, use clamped aligned value
+      if (clampedPrice !== currentPrice) {
+        return clampedPrice;
+      }
+      return currentPrice;
+    });
+  }, [config.reboundMin, config.reboundMax, config.reboundStep]);
 
   // Sync custom levels when config price levels change
   const syncCustomLevelsToConfig = (newConfig: Config) => {
@@ -216,7 +247,7 @@ export default function Home() {
         };
       })
     );
-    setReboundPrice(Math.max(newConfig.reboundMin, Math.min(newConfig.reboundMax, reboundPrice)));
+    // Note: reboundPrice adjustment is handled by the useEffect above
   };
 
   // Calculate stats for all three preset strategies (for comparison visualization)
