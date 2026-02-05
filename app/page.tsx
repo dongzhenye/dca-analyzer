@@ -508,7 +508,7 @@ export default function Home() {
         {/* Strategy Histogram */}
         <div className="bg-zinc-900 rounded-xl p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-sm font-medium text-zinc-400">仓位分布</h2>
+            <h2 className="text-base font-medium text-zinc-300">建仓策略</h2>
             <div className="flex gap-2">
               {STRATEGY_ORDER.map((strategy) => {
                 const isActive = activeStrategy === strategy && !isCustomMode;
@@ -615,7 +615,7 @@ export default function Home() {
         {/* Rebound Price Slider */}
         <div className="bg-zinc-900 rounded-xl p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
-            <span className="text-sm font-medium text-zinc-400">反弹价格</span>
+            <span className="text-base font-medium text-zinc-300">反弹价格</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setReboundPrice(Math.max(config.reboundMin, reboundPrice - config.reboundStep))}
@@ -653,7 +653,7 @@ export default function Home() {
         <div className="bg-zinc-900 rounded-xl p-5 mb-6">
           {/* Header with tabs */}
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-sm font-medium text-zinc-400">策略收益对比</h2>
+            <h2 className="text-base font-medium text-zinc-300">收益对比</h2>
             <div className="flex gap-1">
               <button
                 className={`px-3 py-1 text-xs rounded ${chartView === 'area' ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 transition-colors'}`}
@@ -1121,16 +1121,16 @@ export default function Home() {
           )}
         </div>
 
-        {/* 策略分析 */}
+        {/* 策略建议 */}
         {curveInsight && (
           <div className="bg-zinc-900 rounded-xl p-5 mb-6">
-            <h2 className="text-sm font-medium text-zinc-400 mb-4">策略分析</h2>
+            <h2 className="text-base font-medium text-zinc-300 mb-4">策略建议</h2>
 
             <div className="grid grid-cols-2 gap-6">
               {/* 左侧：结论 */}
               {curveInsight.bestStrategy && (
                 <div className="py-4 px-5 bg-zinc-800/50 rounded-lg border border-zinc-700/50 text-center">
-                  <div className="text-xs text-zinc-500 mb-1">最优策略</div>
+                  <div className="text-xs text-zinc-500 mb-1">推荐策略</div>
                   <div className="text-2xl font-bold text-emerald-400">
                     {curveInsight.bestStrategy.label}
                   </div>
