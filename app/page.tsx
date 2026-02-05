@@ -789,7 +789,7 @@ export default function Home() {
               const showSlider = isCustomMode || activeStrategy === null;
 
               return (
-                <div key={level.price} className="flex items-center gap-3 h-7">
+                <div key={index} className="flex items-center gap-3 h-7">
                   <div className="w-20 text-right font-mono text-sm text-zinc-400">
                     {formatUSD(level.price)}
                   </div>
