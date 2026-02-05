@@ -18,6 +18,9 @@ interface Config {
   // Price levels for position building
   priceLevels: number[];
 
+  // Maximum position (theoretical full position, e.g., 1 BTC)
+  maxPosition: number;
+
   // Rebound simulation range
   reboundMin: number;
   reboundMax: number;
@@ -31,6 +34,7 @@ const DEFAULT_CONFIG: Config = {
   ath: 126277,
   athDate: "2025-10-06",
   priceLevels: [70000, 65000, 60000, 55000, 50000, 45000, 40000],
+  maxPosition: 1.0,
   reboundMin: 35000,
   reboundMax: 75000,
   reboundStep: 1000,
@@ -113,6 +117,15 @@ function calculateStats(
 // Component
 // ============================================================================
 
+// Generate aggressive inverted pyramid (more weight at higher prices)
+// Example: 35%, 20%, 11%, 6%, 3%, 2%, 1% for 7 levels (high price = high weight)
+function generateAggressiveInverted(levelCount: number): number[] {
+  // Reverse exponential: first level (highest price) gets highest weight
+  const weights = Array.from({ length: levelCount }, (_, i) => Math.pow(1.8, levelCount - 1 - i));
+  const sum = weights.reduce((a, b) => a + b, 0);
+  return weights.map(w => w / sum);
+}
+
 export default function Home() {
   // Config state
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
@@ -124,23 +137,42 @@ export default function Home() {
     [config.priceLevels.length]
   );
 
-  // Position state
-  const [levels, setLevels] = useState<PriceLevel[]>(() =>
-    config.priceLevels.map((price, i) => ({
+  // Currently selected preset strategy (null = custom mode)
+  const [selectedStrategy, setSelectedStrategy] = useState<StrategyName>("pyramid");
+
+  // Custom levels - persisted independently, initialized with aggressive inverted
+  const [customLevels, setCustomLevels] = useState<PriceLevel[]>(() => {
+    const aggressiveAlloc = generateAggressiveInverted(DEFAULT_CONFIG.priceLevels.length);
+    return DEFAULT_CONFIG.priceLevels.map((price, i) => ({
       price,
-      position: strategies.pyramid[i],
-    }))
-  );
-  const [reboundPrice, setReboundPrice] = useState(config.reboundDefault);
+      position: aggressiveAlloc[i],
+    }));
+  });
+
+  // Is custom mode active?
   const [isCustomMode, setIsCustomMode] = useState(false);
 
-  // Sync levels when config changes
-  const syncLevelsToConfig = (newConfig: Config, strategy: StrategyName = "pyramid") => {
-    const newStrategies = generateStrategies(newConfig.priceLevels.length);
-    setLevels(
+  // Current active levels (derived from selected strategy or custom)
+  const levels = useMemo(() => {
+    if (isCustomMode) {
+      return customLevels;
+    }
+    const strategyAlloc = strategies[selectedStrategy];
+    return config.priceLevels.map((price, i) => ({
+      price,
+      position: strategyAlloc[i] ?? 0,
+    }));
+  }, [isCustomMode, customLevels, selectedStrategy, strategies, config.priceLevels]);
+
+  const [reboundPrice, setReboundPrice] = useState(config.reboundDefault);
+
+  // Sync custom levels when config price levels change
+  const syncCustomLevelsToConfig = (newConfig: Config) => {
+    const aggressiveAlloc = generateAggressiveInverted(newConfig.priceLevels.length);
+    setCustomLevels(
       newConfig.priceLevels.map((price, i) => ({
         price,
-        position: newStrategies[strategy][i],
+        position: aggressiveAlloc[i],
       }))
     );
     setReboundPrice(Math.max(newConfig.reboundMin, Math.min(newConfig.reboundMax, reboundPrice)));
@@ -162,41 +194,28 @@ export default function Home() {
     });
   }, [config.priceLevels, strategies, reboundPrice, config.ath]);
 
-  // Check which preset strategy matches current levels
-  const activeStrategy = useMemo((): StrategyName | null => {
-    for (const strategy of STRATEGY_ORDER) {
-      const strategyAlloc = strategies[strategy];
-      // Length mismatch means it can't match any preset
-      if (levels.length !== strategyAlloc.length) return null;
-      if (levels.every((l, i) => Math.abs(l.position - (strategyAlloc[i] ?? 0)) < 0.001)) {
-        return strategy;
-      }
-    }
-    return null;
-  }, [levels, strategies]);
+  // Active strategy for display purposes
+  const activeStrategy = isCustomMode ? null : selectedStrategy;
 
-  const applyStrategy = (strategy: StrategyName, keepCustomMode = false) => {
-    const strategyAlloc = strategies[strategy];
-    setLevels(
-      config.priceLevels.map((price, i) => ({
-        price,
-        position: strategyAlloc[i] ?? 0,
-      }))
-    );
-    if (!keepCustomMode) {
-      setIsCustomMode(false);
-    }
+  const applyStrategy = (strategy: StrategyName) => {
+    setSelectedStrategy(strategy);
+    setIsCustomMode(false);
   };
 
-  const updatePosition = (index: number, newPosition: number) => {
-    const updated = [...levels];
+  const enterCustomMode = () => {
+    setIsCustomMode(true);
+  };
+
+  const updateCustomPosition = (index: number, newPosition: number) => {
+    const updated = [...customLevels];
     updated[index] = { ...updated[index], position: newPosition };
-    setLevels(updated);
+    setCustomLevels(updated);
   };
 
   const resetToDefault = () => {
     setConfig(DEFAULT_CONFIG);
-    syncLevelsToConfig(DEFAULT_CONFIG, "pyramid");
+    syncCustomLevelsToConfig(DEFAULT_CONFIG);
+    setSelectedStrategy("pyramid");
     setIsCustomMode(false);
     // Keep config panel open - don't call setShowConfig(false)
   };
@@ -243,60 +262,64 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Asset Config */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-zinc-400">资产</h3>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="text-xs text-zinc-500">名称</label>
-                    <input
-                      type="text"
-                      value={config.assetName}
-                      onChange={(e) => setConfig({ ...config, assetName: e.target.value })}
-                      className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                  <div className="w-20">
-                    <label className="text-xs text-zinc-500">单位</label>
-                    <input
-                      type="text"
-                      value={config.assetUnit}
-                      onChange={(e) => setConfig({ ...config, assetUnit: e.target.value })}
-                      className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
+            <div className="space-y-6">
+              {/* Section 1: Asset & Position */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs text-zinc-500">资产名称</label>
+                  <input
+                    type="text"
+                    value={config.assetName}
+                    onChange={(e) => setConfig({ ...config, assetName: e.target.value })}
+                    className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500">单位</label>
+                  <input
+                    type="text"
+                    value={config.assetUnit}
+                    onChange={(e) => setConfig({ ...config, assetUnit: e.target.value })}
+                    className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500">最大仓位 ({config.assetUnit})</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={config.maxPosition}
+                    onChange={(e) => setConfig({ ...config, maxPosition: Number(e.target.value) })}
+                    className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
+                  />
                 </div>
               </div>
 
-              {/* Target Config */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-zinc-400">目标价格 (ATH)</h3>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="text-xs text-zinc-500">价格</label>
-                    <input
-                      type="number"
-                      value={config.ath}
-                      onChange={(e) => setConfig({ ...config, ath: Number(e.target.value) })}
-                      className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                  <div className="w-32">
-                    <label className="text-xs text-zinc-500">日期</label>
-                    <input
-                      type="text"
-                      value={config.athDate}
-                      onChange={(e) => setConfig({ ...config, athDate: e.target.value })}
-                      className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
+              {/* Section 2: Target Price */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-zinc-500">目标价格 (ATH)</label>
+                  <input
+                    type="number"
+                    value={config.ath}
+                    onChange={(e) => setConfig({ ...config, ath: Number(e.target.value) })}
+                    className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500">目标日期</label>
+                  <input
+                    type="text"
+                    value={config.athDate}
+                    onChange={(e) => setConfig({ ...config, athDate: e.target.value })}
+                    className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
+                  />
                 </div>
               </div>
 
-              {/* Price Levels Config */}
-              <div className="space-y-3 md:col-span-2">
-                <h3 className="text-sm font-medium text-zinc-400">建仓价格档位</h3>
+              {/* Section 3: Price Levels */}
+              <div>
+                <label className="text-xs text-zinc-500 block mb-2">建仓价格档位 (从高到低)</label>
                 <div className="flex flex-wrap gap-2">
                   {config.priceLevels.map((price, i) => (
                     <input
@@ -308,14 +331,14 @@ export default function Home() {
                         newLevels[i] = Number(e.target.value);
                         const newConfig = { ...config, priceLevels: newLevels };
                         setConfig(newConfig);
-                        syncLevelsToConfig(newConfig, activeStrategy || "pyramid");
+                        syncCustomLevelsToConfig(newConfig);
                       }}
                       className="w-24 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm font-mono focus:outline-none focus:border-emerald-500"
                     />
                   ))}
                 </div>
-                <p className="text-xs text-zinc-500">
-                  修改价格档位后，仓位分配将自动重新计算
+                <p className="text-xs text-zinc-600 mt-1">
+                  每个档位的仓位比例由策略决定，总和 = 最大仓位
                 </p>
               </div>
             </div>
@@ -346,10 +369,10 @@ export default function Home() {
                 );
               })}
               <button
-                onClick={() => setIsCustomMode(true)}
+                onClick={() => enterCustomMode()}
                 title="自由调整每个价位的仓位比例"
                 className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                  isCustomMode || activeStrategy === null
+                  isCustomMode
                     ? "bg-emerald-600 text-white"
                     : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
                 }`}
@@ -380,7 +403,7 @@ export default function Home() {
                         max={0.4}
                         step={0.01}
                         value={level.position}
-                        onChange={(e) => updatePosition(index, Number(e.target.value))}
+                        onChange={(e) => updateCustomPosition(index, Number(e.target.value))}
                         className="flex-1 h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                       />
                       <input
@@ -388,7 +411,7 @@ export default function Home() {
                         min={0}
                         max={40}
                         value={Math.round(level.position * 100)}
-                        onChange={(e) => updatePosition(index, Math.min(0.4, Math.max(0, Number(e.target.value) / 100)))}
+                        onChange={(e) => updateCustomPosition(index, Math.min(0.4, Math.max(0, Number(e.target.value) / 100)))}
                         className={`w-14 h-6 text-right font-mono text-sm bg-zinc-800 border border-zinc-700 rounded px-1
                           ${isFilled ? "text-emerald-400" : "text-zinc-400"}
                           focus:outline-none focus:border-emerald-500`}
@@ -416,12 +439,12 @@ export default function Home() {
           </div>
 
           {/* Footer - always reserve space for consistent height */}
-          <div className={`flex justify-between items-center mt-3 h-5 ${isCustomMode || activeStrategy === null ? '' : 'invisible'}`}>
+          <div className={`flex justify-between items-center mt-3 h-5 ${isCustomMode ? '' : 'invisible'}`}>
             <button
-              onClick={() => applyStrategy("pyramid", true)}
+              onClick={() => syncCustomLevelsToConfig(config)}
               className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
             >
-              重置
+              重置自定义
             </button>
             <span className={`text-sm ${Math.abs(totalAllocation - 1) < 0.001 ? 'text-emerald-400' : 'text-amber-400'}`}>
               总仓位: {(totalAllocation * 100).toFixed(0)}%
@@ -468,135 +491,208 @@ export default function Home() {
 
         {/* Unified Profit Area Visualization */}
         <div className="bg-zinc-900 rounded-xl p-5 mb-6">
-          <h2 className="text-sm font-medium text-zinc-400 mb-4">策略收益对比</h2>
+          {/* Header with tabs */}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-sm font-medium text-zinc-400">策略收益对比</h2>
+            <div className="flex gap-1">
+              <button className="px-3 py-1 text-xs rounded bg-zinc-700 text-white">
+                面积对比
+              </button>
+              <button className="px-3 py-1 text-xs rounded bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 transition-colors">
+                收益曲线
+              </button>
+            </div>
+          </div>
 
-          {/* Shared Canvas */}
+          {/* Shared Canvas with Axes */}
           {(() => {
-            // Calculate shared coordinate system
-            const maxGain = config.ath - config.reboundMin;
-            const maxPosition = Math.max(...allStrategyStats.map(s => s.totalPosition), 0.01);
+            // Y-axis: price range from reboundMin to ATH
+            const priceRange = config.ath - config.reboundMin;
 
-            // Calculate grid based on actual values
-            // Total canvas represents: maxGain (height) × maxPosition (width) = max possible profit
-            const maxProfit = maxGain * maxPosition;
+            // X-axis: use config maxPosition
+            const maxPos = config.maxPosition;
 
-            // Target: each cell ≈ $5000 profit
-            const targetCellProfit = 5000;
+            // Calculate custom strategy stats from customLevels (not levels, which changes based on mode)
+            const customStats = calculateStats(customLevels, reboundPrice, config.ath);
 
-            // Calculate grid dimensions
-            // We want roughly square cells in terms of profit contribution
-            // Cell height in $ × Cell width in BTC = $5000
-            // Use geometric mean to balance the grid
-            const numCellsTotal = Math.max(Math.round(maxProfit / targetCellProfit), 1);
-            const gridCols = Math.max(Math.round(Math.sqrt(numCellsTotal * maxPosition / maxGain * 1.5)), 3);
-            const gridRows = Math.max(Math.round(numCellsTotal / gridCols), 3);
+            // Determine current display strategy
+            const currentStrategyName = isCustomMode || activeStrategy === null ? 'custom' : activeStrategy;
 
-            // Actual values per cell
-            const cellGain = maxGain / gridRows;  // $ per cell height
-            const cellPosition = maxPosition / gridCols;  // BTC per cell width
-            const actualCellProfit = cellGain * cellPosition;
+            // All strategies for visualization (always include custom, filter in render)
+            const allStats = [
+              ...allStrategyStats,
+              {
+                name: 'custom' as const,
+                label: '自定义',
+                ...customStats,
+              },
+            ];
 
-            // Determine current strategy for highlight
-            const currentStrategy = isCustomMode ? null : activeStrategy;
+            // Get current stats for Y-axis label
+            const currentStats = currentStrategyName === 'custom'
+              ? { name: 'custom', label: '自定义', ...customStats }
+              : allStrategyStats.find(s => s.name === currentStrategyName) || allStrategyStats[0];
 
-            // Strategy colors
-            const strategyColors: Record<StrategyName, { fill: string; stroke: string; text: string }> = {
-              pyramid: { fill: 'rgba(16, 185, 129, 0.6)', stroke: '#10b981', text: 'text-emerald-400' },
-              linear: { fill: 'rgba(59, 130, 246, 0.5)', stroke: '#3b82f6', text: 'text-blue-400' },
-              inverted: { fill: 'rgba(168, 85, 247, 0.5)', stroke: '#a855f7', text: 'text-purple-400' },
-            };
+            // Helper: convert price to Y percentage (0% = bottom = reboundMin, 100% = top = ATH)
+            const priceToY = (price: number) => ((price - config.reboundMin) / priceRange) * 100;
+
+            // Current cost position
+            const currentCostY = currentStats.totalPosition > 0 ? priceToY(currentStats.avgCost) : 0;
 
             return (
               <>
-                {/* Canvas with overlapping rectangles - full width, 16:9 aspect ratio */}
-                <div
-                  className="relative w-full bg-zinc-800/50 rounded overflow-hidden"
-                  style={{ aspectRatio: '16 / 9', maxHeight: '280px' }}
-                >
-                  {/* Grid background - calculated based on actual values */}
-                  <div
-                    className="absolute inset-0 opacity-20"
-                    style={{
-                      backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.3) 1px, transparent 1px)',
-                      backgroundSize: `${100 / gridCols}% ${100 / gridRows}%`,
-                    }}
-                  />
-
-                  {/* Strategy rectangles - render from smallest to largest, use outlines + transparent fills */}
-                  {[...allStrategyStats]
-                    .sort((a, b) => a.profit - b.profit) // smallest first (drawn first, at bottom)
-                    .map((s) => {
-                      const gain = s.totalPosition > 0 ? config.ath - s.avgCost : 0;
-                      const widthPercent = (s.totalPosition / maxPosition) * 100;
-                      const heightPercent = maxGain > 0 ? (gain / maxGain) * 100 : 0;
-
-                      // Calculate how many cells this strategy fills
-                      const cellsFilled = Math.round(s.profit / actualCellProfit);
-
-                      const isCurrent = s.name === currentStrategy;
-                      const colors = strategyColors[s.name as StrategyName];
-
-                      return (
-                        <div
-                          key={s.name}
-                          className="absolute bottom-0 left-0 transition-all duration-500"
+                {/* Chart layout: Y-axis on left, canvas on right, X-axis below */}
+                <div className="flex flex-col">
+                  {/* Main row: Y-axis + Canvas */}
+                  <div className="flex">
+                    {/* Y-axis labels (outside canvas, left column) */}
+                    <div className="flex flex-col justify-between text-[10px] text-zinc-400 pr-2 py-1" style={{ minWidth: '60px' }}>
+                      <span className="text-right">{formatUSD(config.ath)}</span>
+                      {/* Dynamic cost label */}
+                      {currentStats.totalPosition > 0 && (
+                        <span
+                          className="text-right text-emerald-400 font-medium absolute"
                           style={{
-                            width: `${Math.max(widthPercent, 5)}%`,
-                            height: `${Math.max(heightPercent, 5)}%`,
-                            backgroundColor: isCurrent ? colors.fill : 'transparent',
-                            border: `2px ${isCurrent ? 'solid' : 'dashed'} ${colors.stroke}`,
-                            zIndex: isCurrent ? 30 : 10,
+                            top: `${100 - currentCostY}%`,
+                            transform: 'translateY(-50%)',
                           }}
-                          title={`${s.label}: 涨幅 ${formatUSD(gain)} × 仓位 ${s.totalPosition.toFixed(2)} = 盈利 ${formatUSD(s.profit)} (≈${cellsFilled}格)`}
-                        />
-                      );
-                    })}
+                        >
+                          {formatUSD(currentStats.avgCost)}
+                        </span>
+                      )}
+                      <span className="text-right">{formatUSD(config.reboundMin)}</span>
+                    </div>
 
-                  {/* Axis labels */}
-                  <div className="absolute bottom-1 right-2 text-[10px] text-zinc-500">持仓 →</div>
-                  <div className="absolute top-1 left-2 text-[10px] text-zinc-500">↑ 涨幅</div>
+                    {/* Canvas (chart area) */}
+                    <div
+                      className="relative flex-1 bg-zinc-800/50 rounded overflow-hidden"
+                      style={{ aspectRatio: '5 / 2', minHeight: '280px' }}
+                    >
+                      {/* Grid background */}
+                      <div
+                        className="absolute inset-0 opacity-20"
+                        style={{
+                          backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.3) 1px, transparent 1px)',
+                          backgroundSize: '40px 40px',
+                        }}
+                      />
+
+                      {/* Horizontal line at current cost level */}
+                      {currentStats.totalPosition > 0 && (
+                        <div
+                          className="absolute left-0 right-0 border-t border-dashed border-emerald-500/40"
+                          style={{ bottom: `${currentCostY}%` }}
+                        />
+                      )}
+
+                      {/* Strategy rectangles - sorted so current is on top */}
+                      {allStats
+                        .filter(s => {
+                          // Custom: only show if allocation is valid (~100%)
+                          if (s.name === 'custom') {
+                            const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
+                            return Math.abs(customTotal - 1) < 0.01 && s.totalPosition > 0;
+                          }
+                          return s.totalPosition > 0;
+                        })
+                        .sort((a, b) => {
+                          // Current strategy always on top
+                          if (a.name === currentStrategyName) return 1;
+                          if (b.name === currentStrategyName) return -1;
+                          return b.profit - a.profit;
+                        })
+                        .map((s) => {
+                          // Rectangle: bottom at cost, top at ATH
+                          const costY = priceToY(s.avgCost);
+                          const heightPercent = 100 - costY;
+                          const widthPercent = (s.totalPosition / maxPos) * 100;
+
+                          const isCurrent = s.name === currentStrategyName;
+
+                          return (
+                            <div
+                              key={s.name}
+                              className="absolute left-0 transition-all duration-500"
+                              style={{
+                                bottom: `${costY}%`,
+                                height: `${heightPercent}%`,
+                                width: `${Math.max(widthPercent, 2)}%`,
+                                backgroundColor: isCurrent ? 'rgba(16, 185, 129, 0.35)' : 'transparent',
+                                border: isCurrent
+                                  ? '2px solid #10b981'
+                                  : '2px dashed rgba(113, 113, 122, 0.3)',
+                                zIndex: isCurrent ? 30 : 10,
+                              }}
+                            >
+                              {/* Formula inside current rectangle */}
+                              {isCurrent && s.totalPosition > 0 && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="text-[11px] text-emerald-300/70 text-center leading-relaxed">
+                                    <div className="font-medium">{formatUSD(s.profit)}</div>
+                                    <div className="text-[10px] text-emerald-300/50">
+                                      = ({formatUSD(config.ath)} − {formatUSD(s.avgCost)}) × {s.totalPosition.toFixed(2)}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  {/* X-axis labels (outside canvas, below) */}
+                  <div className="flex">
+                    {/* Spacer for Y-axis column */}
+                    <div style={{ minWidth: '60px' }} />
+                    {/* X-axis labels aligned with canvas */}
+                    <div className="flex-1 flex justify-between text-[10px] text-zinc-500 mt-1 px-1">
+                      <span>0</span>
+                      <span>{(maxPos / 2).toFixed(1)} {config.assetUnit}</span>
+                      <span>{maxPos} {config.assetUnit}</span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Strategy legend with stats */}
-                <div className="flex justify-center gap-6 mt-4">
+                {/* Simplified legend - just name + profit */}
+                <div className="flex justify-center items-end gap-8 mt-4">
                   {allStrategyStats.map((s) => {
-                    const isCurrent = s.name === currentStrategy;
-                    const colors = strategyColors[s.name as StrategyName];
-                    const gain = s.totalPosition > 0 ? config.ath - s.avgCost : 0;
-
+                    const isCurrent = s.name === currentStrategyName;
                     return (
                       <div
                         key={s.name}
-                        className={`text-center cursor-pointer transition-opacity ${isCurrent ? 'opacity-100' : 'opacity-60 hover:opacity-80'}`}
+                        className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
                         onClick={() => applyStrategy(s.name as StrategyName)}
-                        title={`点击应用${s.label}策略`}
                       >
-                        <div className="flex items-center justify-center gap-1.5 mb-1">
-                          <div
-                            className="w-3 h-3 rounded-sm"
-                            style={{
-                              backgroundColor: colors.stroke,
-                              opacity: isCurrent ? 1 : 0.5
-                            }}
-                          />
-                          <span className={`text-xs font-medium ${isCurrent ? colors.text : 'text-zinc-400'}`}>
-                            {s.label}
-                          </span>
+                        <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                          {s.label}
                         </div>
-                        <div className={`text-lg font-bold ${isCurrent ? 'text-white' : 'text-zinc-400'}`}>
+                        <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
                           +{formatUSD(s.profit)}
-                        </div>
-                        <div className="text-[10px] text-zinc-500">
-                          成本 {formatUSD(s.avgCost)} · {s.totalPosition.toFixed(2)} {config.assetUnit}
                         </div>
                       </div>
                     );
                   })}
-                </div>
-
-                {/* Explanation */}
-                <div className="text-center text-xs text-zinc-600 mt-3">
-                  面积 = 盈利额（高度 = ATH - 成本，宽度 = 持仓量）· 每格 ≈ {formatUSD(actualCellProfit)}
+                  {/* Custom strategy in legend - show if allocation is valid (~100%) */}
+                  {(() => {
+                    const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
+                    const isValidCustom = Math.abs(customTotal - 1) < 0.01 && customStats.totalPosition > 0;
+                    if (!isValidCustom) return null;
+                    const isCurrent = isCustomMode;
+                    return (
+                      <div
+                        className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
+                        onClick={() => setIsCustomMode(true)}
+                      >
+                        <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                          自定义
+                        </div>
+                        <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
+                          +{formatUSD(customStats.profit)}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </>
             );
