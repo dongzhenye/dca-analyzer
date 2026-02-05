@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 
 // ============================================================================
 // Constants - Magic numbers extracted for maintainability
@@ -162,6 +162,9 @@ function generateAggressiveInverted(levelCount: number): number[] {
 export default function Home() {
   // Config state
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
+
+  // Drag state for curve chart
+  const isDraggingRef = useRef(false);
   const [showConfig, setShowConfig] = useState(false);
 
   // Filter out empty price levels (price = 0)
@@ -1181,6 +1184,32 @@ export default function Home() {
                 return { name: c.name, label: c.label, profit: point?.y ?? 0 };
               });
 
+              // Drag handlers for rebound price adjustment
+              const updateReboundFromMouse = (e: React.MouseEvent<HTMLDivElement>) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const ratio = x / rect.width;
+                const rawPrice = xMin + ratio * xRange;
+                // Snap to step
+                const snapped = Math.round((rawPrice - xMin) / config.reboundStep) * config.reboundStep + xMin;
+                const clamped = Math.max(xMin, Math.min(xMax, snapped));
+                setReboundPrice(clamped);
+              };
+
+              const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+                isDraggingRef.current = true;
+                updateReboundFromMouse(e);
+              };
+
+              const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+                if (!isDraggingRef.current) return;
+                updateReboundFromMouse(e);
+              };
+
+              const handleMouseUp = () => {
+                isDraggingRef.current = false;
+              };
+
               return (
                 <>
                   {/* Chart layout */}
@@ -1202,8 +1231,12 @@ export default function Home() {
 
                       {/* SVG Chart */}
                       <div
-                        className="relative flex-1 bg-zinc-800/50 rounded overflow-hidden"
+                        className="relative flex-1 bg-zinc-800/50 rounded overflow-hidden cursor-ew-resize"
                         style={{ aspectRatio: '5 / 2', minHeight: `${CONSTANTS.CHART_HEIGHT}px` }}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
                       >
                         <svg
                           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
