@@ -419,20 +419,17 @@ export default function Home() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-              <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
-                <rect width="32" height="32" rx="6" fill="#18181b"/>
-                <rect x="6" y="6" width="4" height="20" rx="1" fill="#22c55e"/>
-                <rect x="14" y="12" width="4" height="14" rx="1" fill="#22c55e"/>
-                <rect x="22" y="18" width="4" height="8" rx="1" fill="#22c55e"/>
-              </svg>
-              仓位模拟器
-            </h1>
-            <p className="text-zinc-400">
-              对比不同建仓策略的收益表现
-            </p>
+        <div className="flex justify-between items-center mb-5">
+          <div className="flex items-center gap-3">
+            <svg className="w-7 h-7" viewBox="0 0 32 32" fill="none">
+              <rect width="32" height="32" rx="6" fill="#18181b"/>
+              <rect x="6" y="6" width="4" height="20" rx="1" fill="#22c55e"/>
+              <rect x="14" y="12" width="4" height="14" rx="1" fill="#22c55e"/>
+              <rect x="22" y="18" width="4" height="8" rx="1" fill="#22c55e"/>
+            </svg>
+            <h1 className="text-xl font-bold">仓位模拟器</h1>
+            <span className="text-zinc-600">|</span>
+            <p className="text-zinc-500 text-sm">对比不同建仓策略的收益表现</p>
           </div>
           <button
             onClick={() => setShowConfig(!showConfig)}
