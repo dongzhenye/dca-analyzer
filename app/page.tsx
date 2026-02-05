@@ -3,6 +3,32 @@
 import { useState, useMemo } from "react";
 
 // ============================================================================
+// Constants - Magic numbers extracted for maintainability
+// ============================================================================
+
+const CONSTANTS = {
+  // Position limits
+  HISTOGRAM_MAX_POSITION: 0.25,
+  SLIDER_MAX_POSITION: 0.4,
+
+  // Precision
+  ALLOCATION_TOLERANCE: 0.01,
+  PRECISION_MULTIPLIER: 10000,
+
+  // Chart dimensions
+  GRID_SIZE: 40,
+  CHART_WIDTH: 600,
+  CHART_HEIGHT: 280,
+} as const;
+
+// ============================================================================
+// Utility functions
+// ============================================================================
+
+const formatUSD = (n: number) =>
+  `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+
+// ============================================================================
 // Configuration - All customizable values in one place
 // ============================================================================
 
@@ -230,11 +256,16 @@ export default function Home() {
     });
   }, [config, strategies, customLevels]);
 
+  // Cache custom allocation total for reuse
+  const customTotal = useMemo(
+    () => customLevels.reduce((sum, l) => sum + l.position, 0),
+    [customLevels]
+  );
+
+  const isValidCustom = Math.abs(customTotal - 1) < CONSTANTS.ALLOCATION_TOLERANCE;
+
   // Curve insight: analyze which strategy wins at each price segment
   const curveInsight = useMemo(() => {
-    // Filter valid strategies (custom must have ~100% allocation)
-    const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
-    const isValidCustom = Math.abs(customTotal - 1) < 0.01;
 
     const validCurves = curveData.filter(c => {
       if (c.name === 'custom') return isValidCustom;
@@ -242,6 +273,10 @@ export default function Home() {
     });
 
     if (validCurves.length === 0) return null;
+
+    // Helper to safely get label for a strategy name
+    const getLabelForName = (name: string): string =>
+      validCurves.find(c => c.name === name)?.label ?? name;
 
     // Price points from high to low
     const prices = [...validCurves[0].points.map(p => p.x)].reverse();
@@ -283,14 +318,15 @@ export default function Home() {
             startPrice: segmentStartPrice,
             endPrice: price + config.reboundStep,
             winner: currentWinner,
-            label: validCurves.find(c => c.name === currentWinner)!.label,
+            label: getLabelForName(currentWinner),
           });
           currentWinner = null;
           segmentStartPrice = null;
         }
       } else {
         // Has profit, find winner
-        const winner = profits.find(p => p.profit === maxProfit)!;
+        const winner = profits.find(p => p.profit === maxProfit);
+        if (!winner) continue;
 
         // Track win count
         winCounts.set(winner.name, (winCounts.get(winner.name) || 0) + 1);
@@ -302,7 +338,7 @@ export default function Home() {
               startPrice: segmentStartPrice,
               endPrice: price + config.reboundStep,
               winner: currentWinner,
-              label: validCurves.find(c => c.name === currentWinner)!.label,
+              label: getLabelForName(currentWinner),
             });
           }
           currentWinner = winner.name;
@@ -317,7 +353,7 @@ export default function Home() {
         startPrice: segmentStartPrice,
         endPrice: config.reboundMin,
         winner: currentWinner,
-        label: validCurves.find(c => c.name === currentWinner)!.label,
+        label: getLabelForName(currentWinner),
       });
     }
 
@@ -333,21 +369,18 @@ export default function Home() {
       }
     });
 
-    // Local format function
-    const fmtUSD = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-
     // Format price range with proper interval notation
     const formatRange = (start: number, end: number): string => {
-      if (start === end) return fmtUSD(start);
+      if (start === end) return formatUSD(start);
       // For the lowest segment, use closed interval at the bottom
       const isLowestSegment = end === config.reboundMin;
       return isLowestSegment
-        ? `(${fmtUSD(start)}, ${fmtUSD(end)}]`
-        : `(${fmtUSD(start)}, ${fmtUSD(end)})`;
+        ? `(${formatUSD(start)}, ${formatUSD(end)}]`
+        : `(${formatUSD(start)}, ${formatUSD(end)})`;
     };
 
     return {
-      allZeroStart: allZeroStart !== null ? fmtUSD(allZeroStart) : null,
+      allZeroStart: allZeroStart !== null ? formatUSD(allZeroStart) : null,
       segments: segments.map(s => ({
         range: formatRange(s.startPrice, s.endPrice),
         winner: s.winner,
@@ -355,7 +388,7 @@ export default function Home() {
       })),
       bestStrategy: bestStrategy.name ? bestStrategy : null,
     };
-  }, [curveData, customLevels, config.reboundMin, config.reboundStep]);
+  }, [curveData, isValidCustom, config.reboundMin, config.reboundStep]);
 
   const applyStrategy = (strategy: StrategyName) => {
     setSelectedStrategy(strategy);
@@ -381,8 +414,6 @@ export default function Home() {
   };
 
   const totalAllocation = levels.reduce((sum, l) => sum + l.position, 0);
-
-  const formatUSD = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8">
@@ -546,8 +577,7 @@ export default function Home() {
           <div className="space-y-2">
             {levels.map((level, index) => {
               const isFilled = level.price >= reboundPrice;
-              const fixedMax = 0.25;
-              const barWidth = Math.min((level.position / fixedMax) * 100, 100);
+              const barWidth = Math.min((level.position / CONSTANTS.HISTOGRAM_MAX_POSITION) * 100, 100);
               const showSlider = isCustomMode || activeStrategy === null;
 
               return (
@@ -560,7 +590,7 @@ export default function Home() {
                       <input
                         type="range"
                         min={0}
-                        max={0.4}
+                        max={CONSTANTS.SLIDER_MAX_POSITION}
                         step={0.01}
                         value={level.position}
                         onChange={(e) => updateCustomPosition(index, Number(e.target.value))}
@@ -569,9 +599,9 @@ export default function Home() {
                       <input
                         type="number"
                         min={0}
-                        max={40}
+                        max={CONSTANTS.SLIDER_MAX_POSITION * 100}
                         value={Math.round(level.position * 100)}
-                        onChange={(e) => updateCustomPosition(index, Math.min(0.4, Math.max(0, Number(e.target.value) / 100)))}
+                        onChange={(e) => updateCustomPosition(index, Math.min(CONSTANTS.SLIDER_MAX_POSITION, Math.max(0, Number(e.target.value) / 100)))}
                         className={`w-14 h-6 text-right font-mono text-sm bg-zinc-800 border border-zinc-700 rounded px-1
                           ${isFilled ? "text-emerald-400" : "text-zinc-400"}
                           focus:outline-none focus:border-emerald-500`}
@@ -606,7 +636,7 @@ export default function Home() {
             >
               重置自定义
             </button>
-            <span className={`text-sm ${Math.abs(totalAllocation - 1) < 0.001 ? 'text-emerald-400' : 'text-amber-400'}`}>
+            <span className={`text-sm ${Math.abs(totalAllocation - 1) < CONSTANTS.ALLOCATION_TOLERANCE ? 'text-emerald-400' : 'text-amber-400'}`}>
               总仓位: {(totalAllocation * 100).toFixed(0)}%
             </span>
           </div>
@@ -736,14 +766,14 @@ export default function Home() {
                       {/* Canvas (chart area) */}
                       <div
                         className="relative flex-1 bg-zinc-800/50 rounded overflow-hidden"
-                        style={{ aspectRatio: '5 / 2', minHeight: '280px' }}
+                        style={{ aspectRatio: '5 / 2', minHeight: `${CONSTANTS.CHART_HEIGHT}px` }}
                       >
                         {/* Grid background */}
                         <div
                           className="absolute inset-0 opacity-20"
                           style={{
                             backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.3) 1px, transparent 1px)',
-                            backgroundSize: '40px 40px',
+                            backgroundSize: `${CONSTANTS.GRID_SIZE}px ${CONSTANTS.GRID_SIZE}px`,
                           }}
                         />
 
@@ -768,8 +798,7 @@ export default function Home() {
                           .filter(s => {
                             // Custom: only show if allocation is valid (~100%)
                             if (s.name === 'custom') {
-                              const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
-                              return Math.abs(customTotal - 1) < 0.01 && s.totalPosition > 0;
+                              return isValidCustom && s.totalPosition > 0;
                             }
                             return s.totalPosition > 0;
                           })
@@ -869,9 +898,8 @@ export default function Home() {
                     })}
                     {/* Custom strategy in legend - show if allocation is valid (~100%) */}
                     {(() => {
-                      const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
-                      const isValidCustom = Math.abs(customTotal - 1) < 0.01 && customStats.totalPosition > 0;
-                      if (!isValidCustom) return null;
+                      const showCustomLegend = isValidCustom && customStats.totalPosition > 0;
+                      if (!showCustomLegend) return null;
                       const isCurrent = isCustomMode;
                       return (
                         <div
@@ -897,11 +925,7 @@ export default function Home() {
               // Determine current display strategy
               const currentStrategyName = isCustomMode || activeStrategy === null ? 'custom' : activeStrategy;
 
-              // Check if custom is valid
-              const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
-              const isValidCustom = Math.abs(customTotal - 1) < 0.01;
-
-              // Filter curve data
+              // Filter curve data (use cached isValidCustom)
               const visibleCurves = curveData.filter(c => {
                 if (c.name === 'custom') return isValidCustom;
                 return true;
@@ -919,8 +943,8 @@ export default function Home() {
               const xRange = xMax - xMin;
 
               // Chart dimensions
-              const chartWidth = 600;
-              const chartHeight = 280;
+              const chartWidth = CONSTANTS.CHART_WIDTH;
+              const chartHeight = CONSTANTS.CHART_HEIGHT;
 
               // Convert data to SVG coordinates
               const toSvgX = (price: number) => ((price - xMin) / xRange) * chartWidth;
@@ -967,7 +991,7 @@ export default function Home() {
                       </div>
 
                       {/* SVG Chart */}
-                      <div className="relative flex-1 bg-zinc-800/50 rounded overflow-hidden" style={{ minHeight: '280px' }}>
+                      <div className="relative flex-1 bg-zinc-800/50 rounded overflow-hidden" style={{ minHeight: `${CONSTANTS.CHART_HEIGHT}px` }}>
                         <svg
                           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
                           className="w-full h-full"
@@ -975,8 +999,8 @@ export default function Home() {
                         >
                           {/* Grid */}
                           <defs>
-                            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                            <pattern id="grid" width={CONSTANTS.GRID_SIZE} height={CONSTANTS.GRID_SIZE} patternUnits="userSpaceOnUse">
+                              <path d={`M ${CONSTANTS.GRID_SIZE} 0 L 0 0 0 ${CONSTANTS.GRID_SIZE}`} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
                             </pattern>
                           </defs>
                           <rect width="100%" height="100%" fill="url(#grid)" />
