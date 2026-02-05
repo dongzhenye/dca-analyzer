@@ -230,6 +230,133 @@ export default function Home() {
     });
   }, [config, strategies, customLevels]);
 
+  // Curve insight: analyze which strategy wins at each price segment
+  const curveInsight = useMemo(() => {
+    // Filter valid strategies (custom must have ~100% allocation)
+    const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
+    const isValidCustom = Math.abs(customTotal - 1) < 0.01;
+
+    const validCurves = curveData.filter(c => {
+      if (c.name === 'custom') return isValidCustom;
+      return true;
+    });
+
+    if (validCurves.length === 0) return null;
+
+    // Price points from high to low
+    const prices = [...validCurves[0].points.map(p => p.x)].reverse();
+
+    // Track segments and coverage
+    interface Segment {
+      startPrice: number;
+      endPrice: number;
+      winner: string;
+      label: string;
+    }
+
+    const segments: Segment[] = [];
+    let currentWinner: string | null = null;
+    let segmentStartPrice: number | null = null;
+    let allZeroStart: number | null = null;
+    let allZeroEnd: number | null = null;
+
+    // Track coverage for each strategy (count of price points where it wins)
+    const winCounts = new Map<string, number>();
+
+    for (const price of prices) {
+      const profits = validCurves.map(c => ({
+        name: c.name,
+        label: c.label,
+        profit: c.points.find(p => p.x === price)?.y ?? 0,
+      }));
+
+      const maxProfit = Math.max(...profits.map(p => p.profit));
+
+      if (maxProfit <= 0) {
+        // No profit zone
+        if (allZeroStart === null) allZeroStart = price;
+        allZeroEnd = price;
+
+        // Close any open segment
+        if (currentWinner !== null && segmentStartPrice !== null) {
+          segments.push({
+            startPrice: segmentStartPrice,
+            endPrice: price + config.reboundStep,
+            winner: currentWinner,
+            label: validCurves.find(c => c.name === currentWinner)!.label,
+          });
+          currentWinner = null;
+          segmentStartPrice = null;
+        }
+      } else {
+        // Has profit, find winner
+        const winner = profits.find(p => p.profit === maxProfit)!;
+
+        // Track win count
+        winCounts.set(winner.name, (winCounts.get(winner.name) || 0) + 1);
+
+        if (winner.name !== currentWinner) {
+          // Strategy switch - close previous segment
+          if (currentWinner !== null && segmentStartPrice !== null) {
+            segments.push({
+              startPrice: segmentStartPrice,
+              endPrice: price + config.reboundStep,
+              winner: currentWinner,
+              label: validCurves.find(c => c.name === currentWinner)!.label,
+            });
+          }
+          currentWinner = winner.name;
+          segmentStartPrice = price;
+        }
+      }
+    }
+
+    // Close the last segment (reaches reboundMin)
+    if (currentWinner !== null && segmentStartPrice !== null) {
+      segments.push({
+        startPrice: segmentStartPrice,
+        endPrice: config.reboundMin,
+        winner: currentWinner,
+        label: validCurves.find(c => c.name === currentWinner)!.label,
+      });
+    }
+
+    // Find best strategy by coverage
+    let bestStrategy = { name: '', label: '', count: 0 };
+    winCounts.forEach((count, name) => {
+      if (count > bestStrategy.count) {
+        bestStrategy = {
+          name,
+          label: validCurves.find(c => c.name === name)?.label || name,
+          count,
+        };
+      }
+    });
+
+    // Local format function
+    const fmtUSD = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+
+    // Format price range with proper interval notation
+    const formatRange = (start: number, end: number): string => {
+      if (start === end) return fmtUSD(start);
+      // For the lowest segment, use closed interval at the bottom
+      const isLowestSegment = end === config.reboundMin;
+      return isLowestSegment
+        ? `(${fmtUSD(start)}, ${fmtUSD(end)}]`
+        : `(${fmtUSD(start)}, ${fmtUSD(end)})`;
+    };
+
+    return {
+      allZeroStart: allZeroStart !== null ? fmtUSD(allZeroStart) : null,
+      segments: segments.map(s => ({
+        range: formatRange(s.startPrice, s.endPrice),
+        winner: s.winner,
+        label: s.label,
+      })),
+      bestStrategy: bestStrategy.name ? bestStrategy : null,
+    };
+  }, [curveData, customLevels, config.reboundMin, config.reboundStep]);
+
   const applyStrategy = (strategy: StrategyName) => {
     setSelectedStrategy(strategy);
     setIsCustomMode(false);
@@ -993,6 +1120,43 @@ export default function Home() {
             })()
           )}
         </div>
+
+        {/* 策略分析 */}
+        {curveInsight && (
+          <div className="bg-zinc-900 rounded-xl p-5 mb-6">
+            <h2 className="text-sm font-medium text-zinc-400 mb-4">策略分析</h2>
+
+            <div className="grid grid-cols-2 gap-6">
+              {/* 左侧：结论 */}
+              {curveInsight.bestStrategy && (
+                <div className="py-4 px-5 bg-zinc-800/50 rounded-lg border border-zinc-700/50 text-center">
+                  <div className="text-xs text-zinc-500 mb-1">最优策略</div>
+                  <div className="text-2xl font-bold text-emerald-400">
+                    {curveInsight.bestStrategy.label}
+                  </div>
+                  <div className="text-xs text-zinc-500 mt-2">
+                    覆盖 {Math.round(curveInsight.bestStrategy.count / ((config.reboundMax - config.reboundMin) / config.reboundStep + 1) * 100)}% 价格区间
+                  </div>
+                </div>
+              )}
+
+              {/* 右侧：分情况讨论 */}
+              <div className="space-y-2 text-sm text-zinc-400">
+                {curveInsight.allZeroStart && (
+                  <p>
+                    当反弹价格在 <span className="text-zinc-300 font-mono">{curveInsight.allZeroStart}</span> 以上时，所有方案都无收益
+                  </p>
+                )}
+                {curveInsight.segments.map((seg, i) => (
+                  <p key={i}>
+                    当反弹价格在 <span className="text-zinc-300 font-mono">{seg.range}</span> 时，
+                    <span className="text-emerald-400 font-medium">{seg.label}</span> 收益最高
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="text-center text-zinc-600 text-xs mt-8">
