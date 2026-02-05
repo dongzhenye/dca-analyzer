@@ -319,6 +319,36 @@ export default function Home() {
 
   const isValidCustom = Math.abs(customTotal - 1) < CONSTANTS.ALLOCATION_TOLERANCE;
 
+  // Calculate profit rankings for legend display (shared between both chart views)
+  const profitRankings = useMemo(() => {
+    // Calculate custom stats inline
+    const customStats = calculateStats(
+      customLevels.filter((l) => l.price > 0),
+      reboundPrice,
+      config.ath,
+      config.maxPosition
+    );
+
+    // Combine all strategies with their profits
+    const allProfits: { name: string; profit: number }[] = [
+      ...allStrategyStats.map(s => ({ name: s.name, profit: s.profit })),
+    ];
+
+    // Only include custom if valid
+    if (isValidCustom) {
+      allProfits.push({ name: 'custom', profit: customStats.profit });
+    }
+
+    // Sort by profit descending and assign ranks
+    const sorted = [...allProfits].sort((a, b) => b.profit - a.profit);
+    const rankings = new Map<string, number>();
+    sorted.forEach((item, index) => {
+      rankings.set(item.name, index + 1);
+    });
+
+    return rankings;
+  }, [allStrategyStats, customLevels, reboundPrice, config.ath, config.maxPosition, isValidCustom]);
+
   // Curve insight: analyze which strategy wins at each price segment
   const curveInsight = useMemo(() => {
 
@@ -1094,14 +1124,15 @@ export default function Home() {
                   <div className="flex justify-center items-end gap-8 mt-4">
                     {allStrategyStats.map((s) => {
                       const isCurrent = s.name === currentStrategyName;
+                      const rank = profitRankings.get(s.name) ?? 0;
                       return (
                         <div
                           key={s.name}
                           className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
                           onClick={() => applyStrategy(s.name as StrategyName)}
                         >
-                          <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                            {s.label}
+                          <div className={`text-sm ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                            {s.label}<sup className="ml-0.5 opacity-60">{rank}</sup>
                           </div>
                           <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
                             +{formatUSD(s.profit)}
@@ -1114,13 +1145,14 @@ export default function Home() {
                       const showCustomLegend = isValidCustom && customStats.totalPosition > 0;
                       if (!showCustomLegend) return null;
                       const isCurrent = isCustomMode;
+                      const rank = profitRankings.get('custom') ?? 0;
                       return (
                         <div
                           className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
                           onClick={() => setIsCustomMode(true)}
                         >
-                          <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                            自定义
+                          <div className={`text-sm ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                            自定义<sup className="ml-0.5 opacity-60">{rank}</sup>
                           </div>
                           <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
                             +{formatUSD(customStats.profit)}
@@ -1350,15 +1382,16 @@ export default function Home() {
                       .filter(p => p.name !== 'custom')
                       .map((p) => {
                         const isCurrent = p.name === currentStrategyName;
+                        const rank = profitRankings.get(p.name) ?? 0;
                         return (
                           <div
                             key={p.name}
                             className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
                             onClick={() => applyStrategy(p.name as StrategyName)}
                           >
-                            <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                              {p.label}
-                            </div>
+                            <div className={`text-sm ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                            {p.label}<sup className="ml-0.5 opacity-60">{rank}</sup>
+                          </div>
                             <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
                               +{formatUSD(p.profit)}
                             </div>
@@ -1370,13 +1403,14 @@ export default function Home() {
                       const customProfit = currentProfits.find(p => p.name === 'custom');
                       if (!customProfit) return null;
                       const isCurrent = isCustomMode;
+                      const rank = profitRankings.get('custom') ?? 0;
                       return (
                         <div
                           className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
                           onClick={() => setIsCustomMode(true)}
                         >
-                          <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                            自定义
+                          <div className={`text-sm ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                            自定义<sup className="ml-0.5 opacity-60">{rank}</sup>
                           </div>
                           <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
                             +{formatUSD(customProfit.profit)}
