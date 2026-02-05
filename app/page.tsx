@@ -991,7 +991,10 @@ export default function Home() {
                       </div>
 
                       {/* SVG Chart */}
-                      <div className="relative flex-1 bg-zinc-800/50 rounded overflow-hidden" style={{ minHeight: `${CONSTANTS.CHART_HEIGHT}px` }}>
+                      <div
+                        className="relative flex-1 bg-zinc-800/50 rounded overflow-hidden"
+                        style={{ aspectRatio: '5 / 2', minHeight: `${CONSTANTS.CHART_HEIGHT}px` }}
+                      >
                         <svg
                           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
                           className="w-full h-full"
