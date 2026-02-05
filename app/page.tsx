@@ -157,10 +157,16 @@ export default function Home() {
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
   const [showConfig, setShowConfig] = useState(false);
 
-  // Derived strategies based on config
+  // Filter out empty price levels (price = 0)
+  const activePriceLevels = useMemo(
+    () => config.priceLevels.filter((p) => p > 0),
+    [config.priceLevels]
+  );
+
+  // Derived strategies based on active levels count
   const strategies = useMemo(
-    () => generateStrategies(config.priceLevels.length),
-    [config.priceLevels.length]
+    () => generateStrategies(activePriceLevels.length || 1),
+    [activePriceLevels.length]
   );
 
   // Currently selected preset strategy (null = custom mode)
@@ -184,25 +190,31 @@ export default function Home() {
   // Current active levels (derived from selected strategy or custom)
   const levels = useMemo(() => {
     if (isCustomMode) {
-      return customLevels;
+      // Filter out empty levels in custom mode too
+      return customLevels.filter((l) => l.price > 0);
     }
     const strategyAlloc = strategies[selectedStrategy];
-    return config.priceLevels.map((price, i) => ({
+    return activePriceLevels.map((price, i) => ({
       price,
       position: strategyAlloc[i] ?? 0,
     }));
-  }, [isCustomMode, customLevels, selectedStrategy, strategies, config.priceLevels]);
+  }, [isCustomMode, customLevels, selectedStrategy, strategies, activePriceLevels]);
 
   const [reboundPrice, setReboundPrice] = useState(config.reboundDefault);
 
   // Sync custom levels when config price levels change
   const syncCustomLevelsToConfig = (newConfig: Config) => {
-    const aggressiveAlloc = generateAggressiveInverted(newConfig.priceLevels.length);
+    const activeLevels = newConfig.priceLevels.filter((p) => p > 0);
+    const aggressiveAlloc = generateAggressiveInverted(activeLevels.length || 1);
     setCustomLevels(
-      newConfig.priceLevels.map((price, i) => ({
-        price,
-        position: aggressiveAlloc[i],
-      }))
+      newConfig.priceLevels.map((price) => {
+        // Find this price's position in the active levels
+        const activeIndex = activeLevels.indexOf(price);
+        return {
+          price,
+          position: activeIndex >= 0 ? aggressiveAlloc[activeIndex] : 0,
+        };
+      })
     );
     setReboundPrice(Math.max(newConfig.reboundMin, Math.min(newConfig.reboundMax, reboundPrice)));
   };
@@ -211,7 +223,7 @@ export default function Home() {
   const allStrategyStats = useMemo(() => {
     return STRATEGY_ORDER.map(strategy => {
       const strategyAlloc = strategies[strategy];
-      const strategyLevels = config.priceLevels.map((price, i) => ({
+      const strategyLevels = activePriceLevels.map((price, i) => ({
         price,
         position: strategyAlloc[i] ?? 0,
       }));
@@ -221,7 +233,7 @@ export default function Home() {
         ...calculateStats(strategyLevels, reboundPrice, config.ath),
       };
     });
-  }, [config.priceLevels, strategies, reboundPrice, config.ath]);
+  }, [activePriceLevels, strategies, reboundPrice, config.ath]);
 
   // Active strategy for display purposes
   const activeStrategy = isCustomMode ? null : selectedStrategy;
@@ -239,8 +251,8 @@ export default function Home() {
     return strategyNames.map((strategyName) => {
       const strategyLevels =
         strategyName === 'custom'
-          ? customLevels
-          : config.priceLevels.map((price, i) => ({
+          ? customLevels.filter((l) => l.price > 0)
+          : activePriceLevels.map((price, i) => ({
               price,
               position: strategies[strategyName][i] ?? 0,
             }));
@@ -433,15 +445,26 @@ export default function Home() {
           </div>
           <button
             onClick={() => setShowConfig(!showConfig)}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 text-sm ${
               showConfig ? "bg-zinc-700 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
             }`}
-            title="配置"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            {showConfig ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+                收起
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                设置
+              </>
+            )}
           </button>
         </div>
 
@@ -484,8 +507,12 @@ export default function Home() {
                   <input
                     type="number"
                     step="0.1"
-                    value={config.maxPosition}
-                    onChange={(e) => setConfig({ ...config, maxPosition: Number(e.target.value) })}
+                    value={config.maxPosition || ""}
+                    onChange={(e) => setConfig({ ...config, maxPosition: Number(e.target.value) || 0 })}
+                    onBlur={(e) => {
+                      const val = Number(e.target.value);
+                      if (!val || val < 0.01) setConfig({ ...config, maxPosition: 0.01 });
+                    }}
                     className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
                   />
                 </div>
@@ -497,15 +524,19 @@ export default function Home() {
                   <label className="text-xs text-zinc-500">目标价格 (ATH)</label>
                   <input
                     type="number"
-                    value={config.ath}
-                    onChange={(e) => setConfig({ ...config, ath: Number(e.target.value) })}
+                    value={config.ath || ""}
+                    onChange={(e) => setConfig({ ...config, ath: Number(e.target.value) || 0 })}
+                    onBlur={(e) => {
+                      const val = Number(e.target.value);
+                      if (!val || val < 1) setConfig({ ...config, ath: 1 });
+                    }}
                     className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
                   />
                 </div>
                 <div>
                   <label className="text-xs text-zinc-500">目标日期</label>
                   <input
-                    type="text"
+                    type="date"
                     value={config.athDate}
                     onChange={(e) => setConfig({ ...config, athDate: e.target.value })}
                     className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm focus:outline-none focus:border-emerald-500"
@@ -515,21 +546,24 @@ export default function Home() {
 
               {/* Section 3: Price Levels */}
               <div>
-                <label className="text-xs text-zinc-500 block mb-2">建仓价格档位 (从高到低)</label>
+                <label className="text-xs text-zinc-500 block mb-2">建仓价格档位 (留空 = 不启用)</label>
                 <div className="flex flex-wrap gap-2">
                   {config.priceLevels.map((price, i) => (
                     <input
                       key={i}
                       type="number"
-                      value={price}
+                      value={price || ""}
+                      placeholder="留空"
                       onChange={(e) => {
                         const newLevels = [...config.priceLevels];
-                        newLevels[i] = Number(e.target.value);
+                        newLevels[i] = Number(e.target.value) || 0;
                         const newConfig = { ...config, priceLevels: newLevels };
                         setConfig(newConfig);
                         syncCustomLevelsToConfig(newConfig);
                       }}
-                      className="w-24 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm font-mono focus:outline-none focus:border-emerald-500"
+                      className={`w-24 px-2 py-1.5 bg-zinc-800 border rounded text-sm font-mono focus:outline-none focus:border-emerald-500 ${
+                        price > 0 ? "border-zinc-700" : "border-zinc-800 text-zinc-600"
+                      }`}
                     />
                   ))}
                 </div>
@@ -537,6 +571,86 @@ export default function Home() {
                   每个档位的仓位比例由策略决定，总和 = 最大仓位
                 </p>
               </div>
+
+              {/* Section 4: Rebound Simulation Range */}
+              <div>
+                <label className="text-xs text-zinc-500 block mb-2">反弹模拟范围</label>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs text-zinc-600">最低价</label>
+                    <input
+                      type="number"
+                      value={config.reboundMin || ""}
+                      onChange={(e) => setConfig({ ...config, reboundMin: Number(e.target.value) || 0 })}
+                      onBlur={(e) => {
+                        const val = Number(e.target.value);
+                        if (!val || val < 1) setConfig({ ...config, reboundMin: 1 });
+                      }}
+                      className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-600">最高价</label>
+                    <input
+                      type="number"
+                      value={config.reboundMax || ""}
+                      onChange={(e) => setConfig({ ...config, reboundMax: Number(e.target.value) || 0 })}
+                      onBlur={(e) => {
+                        const val = Number(e.target.value);
+                        if (!val || val < 1) setConfig({ ...config, reboundMax: 1 });
+                      }}
+                      className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-zinc-600">步长</label>
+                    <input
+                      type="number"
+                      value={config.reboundStep || ""}
+                      onChange={(e) => setConfig({ ...config, reboundStep: Number(e.target.value) || 0 })}
+                      onBlur={(e) => {
+                        const val = Number(e.target.value);
+                        if (!val || val < 1) setConfig({ ...config, reboundStep: 1 });
+                      }}
+                      className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Config Validation Warnings */}
+              {(() => {
+                const warnings: string[] = [];
+                const activeLevels = config.priceLevels.filter((p) => p > 0);
+
+                if (activeLevels.length === 0) {
+                  warnings.push("至少需要一个有效的建仓价格档位");
+                } else {
+                  const maxLevel = Math.max(...activeLevels);
+                  const minLevel = Math.min(...activeLevels);
+
+                  if (config.ath <= maxLevel) {
+                    warnings.push(`目标价 (${formatUSD(config.ath)}) 应高于最高建仓价 (${formatUSD(maxLevel)})`);
+                  }
+                  if (config.reboundMax < minLevel) {
+                    warnings.push(`反弹最高价 (${formatUSD(config.reboundMax)}) 应不低于最低建仓价 (${formatUSD(minLevel)})`);
+                  }
+                }
+                if (config.reboundMin >= config.reboundMax) {
+                  warnings.push("反弹最低价应小于最高价");
+                }
+
+                if (warnings.length === 0) return null;
+
+                return (
+                  <div className="mt-4 p-3 bg-amber-900/20 border border-amber-700/50 rounded-lg">
+                    <div className="text-xs text-amber-400 font-medium mb-1">配置警告</div>
+                    <ul className="text-xs text-amber-300/80 space-y-1">
+                      {warnings.map((w, i) => <li key={i}>• {w}</li>)}
+                    </ul>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
