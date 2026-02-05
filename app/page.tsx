@@ -536,8 +536,10 @@ export default function Home() {
             // Helper: convert price to Y percentage (0% = bottom = reboundMin, 100% = top = ATH)
             const priceToY = (price: number) => ((price - config.reboundMin) / priceRange) * 100;
 
-            // Current cost position
-            const currentCostY = currentStats.totalPosition > 0 ? priceToY(currentStats.avgCost) : 0;
+            // Current cost position (rounded to avoid hydration mismatch)
+            const currentCostY = currentStats.totalPosition > 0
+              ? Math.round(priceToY(currentStats.avgCost) * 10000) / 10000
+              : 0;
 
             return (
               <>
@@ -546,12 +548,13 @@ export default function Home() {
                   {/* Main row: Y-axis + Canvas */}
                   <div className="flex">
                     {/* Y-axis labels (outside canvas, left column) */}
-                    <div className="flex flex-col justify-between text-[10px] text-zinc-400 pr-2 py-1" style={{ minWidth: '60px' }}>
+                    <div className="relative flex flex-col justify-between text-[10px] text-zinc-400 pr-2 py-1" style={{ minWidth: '60px' }}>
                       <span className="text-right">{formatUSD(config.ath)}</span>
-                      {/* Dynamic cost label */}
+                      <span className="text-right">{formatUSD(config.reboundMin)}</span>
+                      {/* Dynamic cost label - absolutely positioned */}
                       {currentStats.totalPosition > 0 && (
                         <span
-                          className="text-right text-emerald-400 font-medium absolute"
+                          className="absolute right-2 text-emerald-400 font-medium"
                           style={{
                             top: `${100 - currentCostY}%`,
                             transform: 'translateY(-50%)',
@@ -560,7 +563,6 @@ export default function Home() {
                           {formatUSD(currentStats.avgCost)}
                         </span>
                       )}
-                      <span className="text-right">{formatUSD(config.reboundMin)}</span>
                     </div>
 
                     {/* Canvas (chart area) */}
@@ -585,6 +587,14 @@ export default function Home() {
                         />
                       )}
 
+                      {/* Vertical line at current position level */}
+                      {currentStats.totalPosition > 0 && (
+                        <div
+                          className="absolute top-0 bottom-0 border-l border-dashed border-emerald-500/40"
+                          style={{ left: `${Math.round((currentStats.totalPosition / maxPos) * 100 * 10000) / 10000}%` }}
+                        />
+                      )}
+
                       {/* Strategy rectangles - sorted so current is on top */}
                       {allStats
                         .filter(s => {
@@ -603,9 +613,10 @@ export default function Home() {
                         })
                         .map((s) => {
                           // Rectangle: bottom at cost, top at ATH
-                          const costY = priceToY(s.avgCost);
-                          const heightPercent = 100 - costY;
-                          const widthPercent = (s.totalPosition / maxPos) * 100;
+                          // Round to 4 decimal places to avoid hydration mismatch
+                          const costY = Math.round(priceToY(s.avgCost) * 10000) / 10000;
+                          const heightPercent = Math.round((100 - costY) * 10000) / 10000;
+                          const widthPercent = Math.round((s.totalPosition / maxPos) * 100 * 10000) / 10000;
 
                           const isCurrent = s.name === currentStrategyName;
 
@@ -620,7 +631,7 @@ export default function Home() {
                                 backgroundColor: isCurrent ? 'rgba(16, 185, 129, 0.35)' : 'transparent',
                                 border: isCurrent
                                   ? '2px solid #10b981'
-                                  : '2px dashed rgba(113, 113, 122, 0.3)',
+                                  : '2px solid rgba(113, 113, 122, 0.4)',
                                 zIndex: isCurrent ? 30 : 10,
                               }}
                             >
@@ -630,7 +641,7 @@ export default function Home() {
                                   <div className="text-[11px] text-emerald-300/70 text-center leading-relaxed">
                                     <div className="font-medium">{formatUSD(s.profit)}</div>
                                     <div className="text-[10px] text-emerald-300/50">
-                                      = ({formatUSD(config.ath)} − {formatUSD(s.avgCost)}) × {s.totalPosition.toFixed(2)}
+                                      = ({formatUSD(config.ath)} − {formatUSD(s.avgCost)}) × {s.totalPosition.toFixed(2)} {config.assetUnit}
                                     </div>
                                   </div>
                                 </div>
@@ -646,10 +657,25 @@ export default function Home() {
                     {/* Spacer for Y-axis column */}
                     <div style={{ minWidth: '60px' }} />
                     {/* X-axis labels aligned with canvas */}
-                    <div className="flex-1 flex justify-between text-[10px] text-zinc-500 mt-1 px-1">
-                      <span>0</span>
-                      <span>{(maxPos / 2).toFixed(1)} {config.assetUnit}</span>
-                      <span>{maxPos} {config.assetUnit}</span>
+                    <div className="relative flex-1 text-[10px] text-zinc-500 mt-1 px-1">
+                      <div className="flex justify-between">
+                        <span>0</span>
+                        <span>{(maxPos / 2).toFixed(1)} {config.assetUnit}</span>
+                        <span>{maxPos} {config.assetUnit}</span>
+                      </div>
+                      {/* Dynamic position label for current strategy */}
+                      {currentStats.totalPosition > 0 && (
+                        <span
+                          className="absolute text-emerald-400 font-medium"
+                          style={{
+                            left: `${Math.round((currentStats.totalPosition / maxPos) * 100 * 10000) / 10000}%`,
+                            transform: 'translateX(-50%)',
+                            top: 0,
+                          }}
+                        >
+                          {currentStats.totalPosition.toFixed(2)} {config.assetUnit}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
