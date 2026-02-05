@@ -152,6 +152,9 @@ export default function Home() {
   // Is custom mode active?
   const [isCustomMode, setIsCustomMode] = useState(false);
 
+  // Chart view mode
+  const [chartView, setChartView] = useState<'area' | 'curve'>('area');
+
   // Current active levels (derived from selected strategy or custom)
   const levels = useMemo(() => {
     if (isCustomMode) {
@@ -196,6 +199,36 @@ export default function Home() {
 
   // Active strategy for display purposes
   const activeStrategy = isCustomMode ? null : selectedStrategy;
+
+  // Curve data: profit at each rebound price for each strategy
+  const curveData = useMemo(() => {
+    const prices: number[] = [];
+    for (let p = config.reboundMin; p <= config.reboundMax; p += config.reboundStep) {
+      prices.push(p);
+    }
+
+    type CurveStrategyName = StrategyName | 'custom';
+    const strategyNames: CurveStrategyName[] = [...STRATEGY_ORDER, 'custom'];
+
+    return strategyNames.map((strategyName) => {
+      const strategyLevels =
+        strategyName === 'custom'
+          ? customLevels
+          : config.priceLevels.map((price, i) => ({
+              price,
+              position: strategies[strategyName][i] ?? 0,
+            }));
+
+      return {
+        name: strategyName,
+        label: strategyName === 'custom' ? '自定义' : STRATEGY_LABELS[strategyName].name,
+        points: prices.map((reboundP) => ({
+          x: reboundP,
+          y: calculateStats(strategyLevels, reboundP, config.ath).profit,
+        })),
+      };
+    });
+  }, [config, strategies, customLevels]);
 
   const applyStrategy = (strategy: StrategyName) => {
     setSelectedStrategy(strategy);
@@ -495,234 +528,470 @@ export default function Home() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-sm font-medium text-zinc-400">策略收益对比</h2>
             <div className="flex gap-1">
-              <button className="px-3 py-1 text-xs rounded bg-zinc-700 text-white">
+              <button
+                className={`px-3 py-1 text-xs rounded ${chartView === 'area' ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 transition-colors'}`}
+                onClick={() => setChartView('area')}
+              >
                 面积对比
               </button>
-              <button className="px-3 py-1 text-xs rounded bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 transition-colors">
+              <button
+                className={`px-3 py-1 text-xs rounded ${chartView === 'curve' ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300 transition-colors'}`}
+                onClick={() => setChartView('curve')}
+              >
                 收益曲线
               </button>
             </div>
           </div>
 
-          {/* Shared Canvas with Axes */}
-          {(() => {
-            // Y-axis: price range from reboundMin to ATH
-            const priceRange = config.ath - config.reboundMin;
+          {/* Chart content - conditional rendering */}
+          {chartView === 'area' ? (
+            /* Area comparison view */
+            (() => {
+              // Y-axis: price range from reboundMin to ATH
+              const priceRange = config.ath - config.reboundMin;
 
-            // X-axis: use config maxPosition
-            const maxPos = config.maxPosition;
+              // X-axis: use config maxPosition
+              const maxPos = config.maxPosition;
 
-            // Calculate custom strategy stats from customLevels (not levels, which changes based on mode)
-            const customStats = calculateStats(customLevels, reboundPrice, config.ath);
+              // Calculate custom strategy stats from customLevels (not levels, which changes based on mode)
+              const customStats = calculateStats(customLevels, reboundPrice, config.ath);
 
-            // Determine current display strategy
-            const currentStrategyName = isCustomMode || activeStrategy === null ? 'custom' : activeStrategy;
+              // Determine current display strategy
+              const currentStrategyName = isCustomMode || activeStrategy === null ? 'custom' : activeStrategy;
 
-            // All strategies for visualization (always include custom, filter in render)
-            const allStats = [
-              ...allStrategyStats,
-              {
-                name: 'custom' as const,
-                label: '自定义',
-                ...customStats,
-              },
-            ];
+              // All strategies for visualization (always include custom, filter in render)
+              const allStats = [
+                ...allStrategyStats,
+                {
+                  name: 'custom' as const,
+                  label: '自定义',
+                  ...customStats,
+                },
+              ];
 
-            // Get current stats for Y-axis label
-            const currentStats = currentStrategyName === 'custom'
-              ? { name: 'custom', label: '自定义', ...customStats }
-              : allStrategyStats.find(s => s.name === currentStrategyName) || allStrategyStats[0];
+              // Get current stats for Y-axis label
+              const currentStats = currentStrategyName === 'custom'
+                ? { name: 'custom', label: '自定义', ...customStats }
+                : allStrategyStats.find(s => s.name === currentStrategyName) || allStrategyStats[0];
 
-            // Helper: convert price to Y percentage (0% = bottom = reboundMin, 100% = top = ATH)
-            const priceToY = (price: number) => ((price - config.reboundMin) / priceRange) * 100;
+              // Helper: convert price to Y percentage (0% = bottom = reboundMin, 100% = top = ATH)
+              const priceToY = (price: number) => ((price - config.reboundMin) / priceRange) * 100;
 
-            // Current cost position (rounded to avoid hydration mismatch)
-            const currentCostY = currentStats.totalPosition > 0
-              ? Math.round(priceToY(currentStats.avgCost) * 10000) / 10000
-              : 0;
+              // Current cost position (rounded to avoid hydration mismatch)
+              const currentCostY = currentStats.totalPosition > 0
+                ? Math.round(priceToY(currentStats.avgCost) * 10000) / 10000
+                : 0;
 
-            return (
-              <>
-                {/* Chart layout: Y-axis on left, canvas on right, X-axis below */}
-                <div className="flex flex-col">
-                  {/* Main row: Y-axis + Canvas */}
-                  <div className="flex">
-                    {/* Y-axis labels (outside canvas, left column) */}
-                    <div className="relative flex flex-col justify-between text-[10px] text-zinc-400 pr-2 py-1" style={{ minWidth: '60px' }}>
-                      <span className="text-right">{formatUSD(config.ath)}</span>
-                      <span className="text-right">{formatUSD(config.reboundMin)}</span>
-                      {/* Dynamic cost label - absolutely positioned */}
-                      {currentStats.totalPosition > 0 && (
-                        <span
-                          className="absolute right-2 text-emerald-400 font-medium"
-                          style={{
-                            top: `${100 - currentCostY}%`,
-                            transform: 'translateY(-50%)',
-                          }}
-                        >
-                          {formatUSD(currentStats.avgCost)}
-                        </span>
-                      )}
-                    </div>
+              return (
+                <>
+                  {/* Chart layout: Y-axis on left, canvas on right, X-axis below */}
+                  <div className="flex flex-col">
+                    {/* Main row: Y-axis + Canvas */}
+                    <div className="flex">
+                      {/* Y-axis labels (outside canvas, left column) */}
+                      <div className="relative flex flex-col justify-between text-[10px] text-zinc-400 pr-2 py-1" style={{ minWidth: '60px' }}>
+                        <span className="text-right">{formatUSD(config.ath)}</span>
+                        <span className="text-right">{formatUSD(config.reboundMin)}</span>
+                        {/* Dynamic cost label - absolutely positioned */}
+                        {currentStats.totalPosition > 0 && (
+                          <span
+                            className="absolute right-2 text-emerald-400 font-medium"
+                            style={{
+                              top: `${100 - currentCostY}%`,
+                              transform: 'translateY(-50%)',
+                            }}
+                          >
+                            {formatUSD(currentStats.avgCost)}
+                          </span>
+                        )}
+                      </div>
 
-                    {/* Canvas (chart area) */}
-                    <div
-                      className="relative flex-1 bg-zinc-800/50 rounded overflow-hidden"
-                      style={{ aspectRatio: '5 / 2', minHeight: '280px' }}
-                    >
-                      {/* Grid background */}
+                      {/* Canvas (chart area) */}
                       <div
-                        className="absolute inset-0 opacity-20"
-                        style={{
-                          backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.3) 1px, transparent 1px)',
-                          backgroundSize: '40px 40px',
-                        }}
-                      />
-
-                      {/* Horizontal line at current cost level */}
-                      {currentStats.totalPosition > 0 && (
+                        className="relative flex-1 bg-zinc-800/50 rounded overflow-hidden"
+                        style={{ aspectRatio: '5 / 2', minHeight: '280px' }}
+                      >
+                        {/* Grid background */}
                         <div
-                          className="absolute left-0 right-0 border-t border-dashed border-emerald-500/40"
-                          style={{ bottom: `${currentCostY}%` }}
+                          className="absolute inset-0 opacity-20"
+                          style={{
+                            backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.3) 1px, transparent 1px)',
+                            backgroundSize: '40px 40px',
+                          }}
                         />
-                      )}
 
-                      {/* Vertical line at current position level */}
-                      {currentStats.totalPosition > 0 && (
-                        <div
-                          className="absolute top-0 bottom-0 border-l border-dashed border-emerald-500/40"
-                          style={{ left: `${Math.round((currentStats.totalPosition / maxPos) * 100 * 10000) / 10000}%` }}
-                        />
-                      )}
+                        {/* Horizontal line at current cost level */}
+                        {currentStats.totalPosition > 0 && (
+                          <div
+                            className="absolute left-0 right-0 border-t border-dashed border-emerald-500/40"
+                            style={{ bottom: `${currentCostY}%` }}
+                          />
+                        )}
 
-                      {/* Strategy rectangles - sorted so current is on top */}
-                      {allStats
-                        .filter(s => {
-                          // Custom: only show if allocation is valid (~100%)
-                          if (s.name === 'custom') {
-                            const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
-                            return Math.abs(customTotal - 1) < 0.01 && s.totalPosition > 0;
-                          }
-                          return s.totalPosition > 0;
-                        })
-                        .sort((a, b) => {
-                          // Current strategy always on top
-                          if (a.name === currentStrategyName) return 1;
-                          if (b.name === currentStrategyName) return -1;
-                          return b.profit - a.profit;
-                        })
-                        .map((s) => {
-                          // Rectangle: bottom at cost, top at ATH
-                          // Round to 4 decimal places to avoid hydration mismatch
-                          const costY = Math.round(priceToY(s.avgCost) * 10000) / 10000;
-                          const heightPercent = Math.round((100 - costY) * 10000) / 10000;
-                          const widthPercent = Math.round((s.totalPosition / maxPos) * 100 * 10000) / 10000;
+                        {/* Vertical line at current position level */}
+                        {currentStats.totalPosition > 0 && (
+                          <div
+                            className="absolute top-0 bottom-0 border-l border-dashed border-emerald-500/40"
+                            style={{ left: `${Math.round((currentStats.totalPosition / maxPos) * 100 * 10000) / 10000}%` }}
+                          />
+                        )}
 
-                          const isCurrent = s.name === currentStrategyName;
+                        {/* Strategy rectangles - sorted so current is on top */}
+                        {allStats
+                          .filter(s => {
+                            // Custom: only show if allocation is valid (~100%)
+                            if (s.name === 'custom') {
+                              const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
+                              return Math.abs(customTotal - 1) < 0.01 && s.totalPosition > 0;
+                            }
+                            return s.totalPosition > 0;
+                          })
+                          .sort((a, b) => {
+                            // Current strategy always on top
+                            if (a.name === currentStrategyName) return 1;
+                            if (b.name === currentStrategyName) return -1;
+                            return b.profit - a.profit;
+                          })
+                          .map((s) => {
+                            // Rectangle: bottom at cost, top at ATH
+                            // Round to 4 decimal places to avoid hydration mismatch
+                            const costY = Math.round(priceToY(s.avgCost) * 10000) / 10000;
+                            const heightPercent = Math.round((100 - costY) * 10000) / 10000;
+                            const widthPercent = Math.round((s.totalPosition / maxPos) * 100 * 10000) / 10000;
 
-                          return (
-                            <div
-                              key={s.name}
-                              className="absolute left-0 transition-all duration-500"
-                              style={{
-                                bottom: `${costY}%`,
-                                height: `${heightPercent}%`,
-                                width: `${Math.max(widthPercent, 2)}%`,
-                                backgroundColor: isCurrent ? 'rgba(16, 185, 129, 0.35)' : 'transparent',
-                                border: isCurrent
-                                  ? '2px solid #10b981'
-                                  : '2px solid rgba(113, 113, 122, 0.4)',
-                                zIndex: isCurrent ? 30 : 10,
-                              }}
-                            >
-                              {/* Formula inside current rectangle */}
-                              {isCurrent && s.totalPosition > 0 && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="text-[11px] text-emerald-300/70 text-center leading-relaxed">
-                                    <div className="font-medium">{formatUSD(s.profit)}</div>
-                                    <div className="text-[10px] text-emerald-300/50">
-                                      = ({formatUSD(config.ath)} − {formatUSD(s.avgCost)}) × {s.totalPosition.toFixed(2)} {config.assetUnit}
+                            const isCurrent = s.name === currentStrategyName;
+
+                            return (
+                              <div
+                                key={s.name}
+                                className="absolute left-0 transition-all duration-500"
+                                style={{
+                                  bottom: `${costY}%`,
+                                  height: `${heightPercent}%`,
+                                  width: `${Math.max(widthPercent, 2)}%`,
+                                  backgroundColor: isCurrent ? 'rgba(16, 185, 129, 0.35)' : 'transparent',
+                                  border: isCurrent
+                                    ? '2px solid #10b981'
+                                    : '2px solid rgba(113, 113, 122, 0.4)',
+                                  zIndex: isCurrent ? 30 : 10,
+                                }}
+                              >
+                                {/* Formula inside current rectangle */}
+                                {isCurrent && s.totalPosition > 0 && (
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="text-[11px] text-emerald-300/70 text-center leading-relaxed">
+                                      <div className="font-medium">{formatUSD(s.profit)}</div>
+                                      <div className="text-[10px] text-emerald-300/50">
+                                        = ({formatUSD(config.ath)} − {formatUSD(s.avgCost)}) × {s.totalPosition.toFixed(2)} {config.assetUnit}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+
+                    {/* X-axis labels (outside canvas, below) */}
+                    <div className="flex">
+                      {/* Spacer for Y-axis column */}
+                      <div style={{ minWidth: '60px' }} />
+                      {/* X-axis labels aligned with canvas */}
+                      <div className="relative flex-1 text-[10px] text-zinc-500 mt-1 px-1">
+                        <div className="flex justify-between">
+                          <span>0</span>
+                          <span>{(maxPos / 2).toFixed(1)} {config.assetUnit}</span>
+                          <span>{maxPos} {config.assetUnit}</span>
+                        </div>
+                        {/* Dynamic position label for current strategy */}
+                        {currentStats.totalPosition > 0 && (
+                          <span
+                            className="absolute text-emerald-400 font-medium"
+                            style={{
+                              left: `${Math.round((currentStats.totalPosition / maxPos) * 100 * 10000) / 10000}%`,
+                              transform: 'translateX(-50%)',
+                              top: 0,
+                            }}
+                          >
+                            {currentStats.totalPosition.toFixed(2)} {config.assetUnit}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* X-axis labels (outside canvas, below) */}
-                  <div className="flex">
-                    {/* Spacer for Y-axis column */}
-                    <div style={{ minWidth: '60px' }} />
-                    {/* X-axis labels aligned with canvas */}
-                    <div className="relative flex-1 text-[10px] text-zinc-500 mt-1 px-1">
-                      <div className="flex justify-between">
-                        <span>0</span>
-                        <span>{(maxPos / 2).toFixed(1)} {config.assetUnit}</span>
-                        <span>{maxPos} {config.assetUnit}</span>
+                  {/* Simplified legend - just name + profit */}
+                  <div className="flex justify-center items-end gap-8 mt-4">
+                    {allStrategyStats.map((s) => {
+                      const isCurrent = s.name === currentStrategyName;
+                      return (
+                        <div
+                          key={s.name}
+                          className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
+                          onClick={() => applyStrategy(s.name as StrategyName)}
+                        >
+                          <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                            {s.label}
+                          </div>
+                          <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
+                            +{formatUSD(s.profit)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {/* Custom strategy in legend - show if allocation is valid (~100%) */}
+                    {(() => {
+                      const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
+                      const isValidCustom = Math.abs(customTotal - 1) < 0.01 && customStats.totalPosition > 0;
+                      if (!isValidCustom) return null;
+                      const isCurrent = isCustomMode;
+                      return (
+                        <div
+                          className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
+                          onClick={() => setIsCustomMode(true)}
+                        >
+                          <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                            自定义
+                          </div>
+                          <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
+                            +{formatUSD(customStats.profit)}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </>
+              );
+            })()
+          ) : (
+            /* Profit curve view */
+            (() => {
+              // Determine current display strategy
+              const currentStrategyName = isCustomMode || activeStrategy === null ? 'custom' : activeStrategy;
+
+              // Check if custom is valid
+              const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
+              const isValidCustom = Math.abs(customTotal - 1) < 0.01;
+
+              // Filter curve data
+              const visibleCurves = curveData.filter(c => {
+                if (c.name === 'custom') return isValidCustom;
+                return true;
+              });
+
+              // Calculate Y-axis range (profit range)
+              const allProfits = visibleCurves.flatMap(c => c.points.map(p => p.y));
+              const minProfit = Math.min(0, ...allProfits);
+              const maxProfit = Math.max(...allProfits);
+              const profitRange = maxProfit - minProfit || 1;
+
+              // X-axis range (rebound price)
+              const xMin = config.reboundMin;
+              const xMax = config.reboundMax;
+              const xRange = xMax - xMin;
+
+              // Chart dimensions
+              const chartWidth = 600;
+              const chartHeight = 280;
+
+              // Convert data to SVG coordinates
+              const toSvgX = (price: number) => ((price - xMin) / xRange) * chartWidth;
+              const toSvgY = (profit: number) => chartHeight - ((profit - minProfit) / profitRange) * chartHeight;
+
+              // Generate path for a curve
+              const generatePath = (points: { x: number; y: number }[]) => {
+                if (points.length === 0) return '';
+                const pathParts = points.map((p, i) => {
+                  const svgX = toSvgX(p.x);
+                  const svgY = toSvgY(p.y);
+                  return i === 0 ? `M ${svgX} ${svgY}` : `L ${svgX} ${svgY}`;
+                });
+                return pathParts.join(' ');
+              };
+
+              // Current rebound price position
+              const reboundX = toSvgX(reboundPrice);
+              const zeroY = toSvgY(0);
+
+              // Get profit at current rebound price for each strategy
+              const currentProfits = visibleCurves.map(c => {
+                const point = c.points.find(p => p.x === reboundPrice);
+                return { name: c.name, label: c.label, profit: point?.y ?? 0 };
+              });
+
+              return (
+                <>
+                  {/* Chart layout */}
+                  <div className="flex flex-col">
+                    <div className="flex">
+                      {/* Y-axis labels */}
+                      <div className="relative flex flex-col justify-between text-[10px] text-zinc-400 pr-2 py-1" style={{ minWidth: '60px' }}>
+                        <span className="text-right">{formatUSD(maxProfit)}</span>
+                        {minProfit < 0 && (
+                          <span
+                            className="absolute right-2 text-zinc-500"
+                            style={{ top: `${(zeroY / chartHeight) * 100}%`, transform: 'translateY(-50%)' }}
+                          >
+                            $0
+                          </span>
+                        )}
+                        <span className="text-right">{formatUSD(minProfit)}</span>
                       </div>
-                      {/* Dynamic position label for current strategy */}
-                      {currentStats.totalPosition > 0 && (
+
+                      {/* SVG Chart */}
+                      <div className="relative flex-1 bg-zinc-800/50 rounded overflow-hidden" style={{ minHeight: '280px' }}>
+                        <svg
+                          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                          className="w-full h-full"
+                          preserveAspectRatio="none"
+                        >
+                          {/* Grid */}
+                          <defs>
+                            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                            </pattern>
+                          </defs>
+                          <rect width="100%" height="100%" fill="url(#grid)" />
+
+                          {/* Zero line if visible */}
+                          {minProfit < 0 && (
+                            <line
+                              x1="0"
+                              y1={zeroY}
+                              x2={chartWidth}
+                              y2={zeroY}
+                              stroke="rgba(255,255,255,0.2)"
+                              strokeWidth="1"
+                              strokeDasharray="4 4"
+                            />
+                          )}
+
+                          {/* Strategy curves - non-current first */}
+                          {visibleCurves
+                            .filter(c => c.name !== currentStrategyName)
+                            .map(c => (
+                              <path
+                                key={c.name}
+                                d={generatePath(c.points)}
+                                fill="none"
+                                stroke="rgba(113, 113, 122, 0.5)"
+                                strokeWidth="1.5"
+                              />
+                            ))}
+
+                          {/* Current strategy curve - on top */}
+                          {visibleCurves
+                            .filter(c => c.name === currentStrategyName)
+                            .map(c => (
+                              <path
+                                key={c.name}
+                                d={generatePath(c.points)}
+                                fill="none"
+                                stroke="#10b981"
+                                strokeWidth="2.5"
+                              />
+                            ))}
+
+                          {/* Vertical line at current rebound price */}
+                          <line
+                            x1={reboundX}
+                            y1="0"
+                            x2={reboundX}
+                            y2={chartHeight}
+                            stroke="rgba(16, 185, 129, 0.4)"
+                            strokeWidth="1"
+                            strokeDasharray="4 4"
+                          />
+
+                          {/* Points at current rebound price */}
+                          {visibleCurves.map(c => {
+                            const point = c.points.find(p => p.x === reboundPrice);
+                            if (!point) return null;
+                            const isCurrent = c.name === currentStrategyName;
+                            return (
+                              <circle
+                                key={c.name}
+                                cx={reboundX}
+                                cy={toSvgY(point.y)}
+                                r={isCurrent ? 5 : 3}
+                                fill={isCurrent ? '#10b981' : '#71717a'}
+                              />
+                            );
+                          })}
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* X-axis labels */}
+                    <div className="flex">
+                      <div style={{ minWidth: '60px' }} />
+                      <div className="relative flex-1 text-[10px] text-zinc-500 mt-1 px-1">
+                        <div className="flex justify-between">
+                          <span>{formatUSD(xMin)}</span>
+                          <span>{formatUSD((xMin + xMax) / 2)}</span>
+                          <span>{formatUSD(xMax)}</span>
+                        </div>
+                        {/* Current rebound price indicator */}
                         <span
                           className="absolute text-emerald-400 font-medium"
                           style={{
-                            left: `${Math.round((currentStats.totalPosition / maxPos) * 100 * 10000) / 10000}%`,
+                            left: `${((reboundPrice - xMin) / xRange) * 100}%`,
                             transform: 'translateX(-50%)',
                             top: 0,
                           }}
                         >
-                          {currentStats.totalPosition.toFixed(2)} {config.assetUnit}
+                          {formatUSD(reboundPrice)}
                         </span>
-                      )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Simplified legend - just name + profit */}
-                <div className="flex justify-center items-end gap-8 mt-4">
-                  {allStrategyStats.map((s) => {
-                    const isCurrent = s.name === currentStrategyName;
-                    return (
-                      <div
-                        key={s.name}
-                        className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
-                        onClick={() => applyStrategy(s.name as StrategyName)}
-                      >
-                        <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                          {s.label}
+                  {/* Legend with profits at current rebound price */}
+                  <div className="flex justify-center items-end gap-8 mt-4">
+                    {currentProfits
+                      .filter(p => p.name !== 'custom')
+                      .map((p) => {
+                        const isCurrent = p.name === currentStrategyName;
+                        return (
+                          <div
+                            key={p.name}
+                            className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
+                            onClick={() => applyStrategy(p.name as StrategyName)}
+                          >
+                            <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                              {p.label}
+                            </div>
+                            <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
+                              +{formatUSD(p.profit)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {/* Custom in legend */}
+                    {isValidCustom && (() => {
+                      const customProfit = currentProfits.find(p => p.name === 'custom');
+                      if (!customProfit) return null;
+                      const isCurrent = isCustomMode;
+                      return (
+                        <div
+                          className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
+                          onClick={() => setIsCustomMode(true)}
+                        >
+                          <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                            自定义
+                          </div>
+                          <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
+                            +{formatUSD(customProfit.profit)}
+                          </div>
                         </div>
-                        <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
-                          +{formatUSD(s.profit)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {/* Custom strategy in legend - show if allocation is valid (~100%) */}
-                  {(() => {
-                    const customTotal = customLevels.reduce((sum, l) => sum + l.position, 0);
-                    const isValidCustom = Math.abs(customTotal - 1) < 0.01 && customStats.totalPosition > 0;
-                    if (!isValidCustom) return null;
-                    const isCurrent = isCustomMode;
-                    return (
-                      <div
-                        className={`text-center cursor-pointer transition-all ${isCurrent ? '' : 'opacity-40 hover:opacity-60'}`}
-                        onClick={() => setIsCustomMode(true)}
-                      >
-                        <div className={`text-xs ${isCurrent ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                          自定义
-                        </div>
-                        <div className={`font-bold ${isCurrent ? 'text-white text-xl' : 'text-zinc-500 text-base'}`}>
-                          +{formatUSD(customStats.profit)}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </>
-            );
-          })()}
+                      );
+                    })()}
+                  </div>
+                </>
+              );
+            })()
+          )}
         </div>
 
         {/* Footer */}
