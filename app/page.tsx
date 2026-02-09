@@ -986,8 +986,12 @@ export default function Home() {
                 <>
                   {/* Chart layout: Y-axis on left, canvas on right, X-axis below */}
                   <div className="flex flex-col">
-                    {/* Main row: Y-axis + Canvas */}
+                    {/* Main row: Y-axis title + Y-axis + Canvas */}
                     <div className="flex">
+                      {/* Y-axis title */}
+                      <div className="flex items-center mr-1">
+                        <span className="text-[10px] text-zinc-500 [writing-mode:vertical-lr] rotate-180 tracking-wider">价格 (USD)</span>
+                      </div>
                       {/* Y-axis labels (outside canvas, left column) */}
                       <div className="relative flex flex-col justify-between text-[10px] text-zinc-400 pr-2 py-1" style={{ minWidth: '60px' }}>
                         <span className="text-right">{formatUSD(config.ath)}</span>
@@ -1094,8 +1098,8 @@ export default function Home() {
 
                     {/* X-axis labels (outside canvas, below) */}
                     <div className="flex">
-                      {/* Spacer for Y-axis column */}
-                      <div style={{ minWidth: '60px' }} />
+                      {/* Spacer for Y-axis title + Y-axis column */}
+                      <div style={{ minWidth: '74px' }} />
                       {/* X-axis labels aligned with canvas */}
                       <div className="relative flex-1 text-[10px] text-zinc-500 mt-1 px-1">
                         <div className="flex justify-between">
@@ -1116,6 +1120,13 @@ export default function Home() {
                             {currentStats.totalPosition.toFixed(2)} {config.assetUnit}
                           </span>
                         )}
+                      </div>
+                    </div>
+                    {/* X-axis title */}
+                    <div className="flex">
+                      <div style={{ minWidth: '74px' }} />
+                      <div className="flex-1 text-right pr-1 mt-0.5">
+                        <span className="text-[10px] text-zinc-500 tracking-wider">仓位 ({config.assetUnit})</span>
                       </div>
                     </div>
                   </div>
@@ -1250,6 +1261,10 @@ export default function Home() {
                   {/* Chart layout */}
                   <div className="flex flex-col">
                     <div className="flex">
+                      {/* Y-axis title */}
+                      <div className="flex items-center mr-1">
+                        <span className="text-[10px] text-zinc-500 [writing-mode:vertical-lr] rotate-180 tracking-wider">盈利额 (USD)</span>
+                      </div>
                       {/* Y-axis labels */}
                       <div className="relative flex flex-col justify-between text-[10px] text-zinc-400 pr-2 py-1" style={{ minWidth: '60px' }}>
                         <span className="text-right">{formatUSD(maxProfit)}</span>
@@ -1357,7 +1372,7 @@ export default function Home() {
 
                     {/* X-axis labels */}
                     <div className="flex">
-                      <div style={{ minWidth: '60px' }} />
+                      <div style={{ minWidth: '74px' }} />
                       <div className="relative flex-1 text-[10px] text-zinc-500 mt-1 px-1">
                         <div className="flex justify-between">
                           <span>{formatUSD(xMin)}</span>
@@ -1375,6 +1390,13 @@ export default function Home() {
                         >
                           {formatUSD(reboundPrice)}
                         </span>
+                      </div>
+                    </div>
+                    {/* X-axis title */}
+                    <div className="flex">
+                      <div style={{ minWidth: '74px' }} />
+                      <div className="flex-1 text-right pr-1 mt-0.5">
+                        <span className="text-[10px] text-zinc-500 tracking-wider">反弹价格 (USD)</span>
                       </div>
                     </div>
                   </div>
