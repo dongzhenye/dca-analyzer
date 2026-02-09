@@ -1177,9 +1177,12 @@ export default function Home() {
               });
 
               // Calculate Y-axis range (profit range)
+              // Theoretical max: all maxPosition bought at lowest price level
+              const lowestPrice = Math.min(...config.priceLevels.filter(p => p > 0));
+              const theoreticalMax = (config.ath - lowestPrice) * config.maxPosition;
               const allProfits = visibleCurves.flatMap(c => c.points.map(p => p.y));
               const minProfit = Math.min(0, ...allProfits);
-              const maxProfit = Math.max(...allProfits);
+              const maxProfit = Math.max(theoreticalMax, ...allProfits);
               const profitRange = maxProfit - minProfit || 1;
 
               // X-axis range (rebound price)
