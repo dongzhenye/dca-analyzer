@@ -338,6 +338,24 @@ export default function Home() {
 
   const isValidCustom = Math.abs(customTotal - 1) < CONSTANTS.ALLOCATION_TOLERANCE;
 
+  // Valid strategies: presets always included, custom only when allocation sums to ~100%
+  // Single source of truth — consumed by insight, profitRankings, and future consumers
+  const validStrategies = useMemo(() => {
+    const list: { name: string; label: string; levels: PriceLevel[] }[] = STRATEGY_ORDER.map(name => ({
+      name,
+      label: STRATEGY_LABELS[name].name,
+      levels: activePriceLevels.map((price, i) => ({ price, position: strategies[name][i] ?? 0 })),
+    }));
+    if (isValidCustom) {
+      list.push({
+        name: 'custom',
+        label: '自定义',
+        levels: customLevels.filter(l => l.price > 0),
+      });
+    }
+    return list;
+  }, [activePriceLevels, strategies, isValidCustom, customLevels]);
+
   // Calculate profit rankings for legend display (shared between both chart views)
   const profitRankings = useMemo(() => {
     // Calculate custom stats inline
@@ -368,15 +386,10 @@ export default function Home() {
     return rankings;
   }, [allStrategyStats, customLevels, reboundPrice, config.ath, config.maxPosition, isValidCustom]);
 
-  // Curve insight: analyze which strategy wins at each price segment
-  const curveInsight = useMemo(() => {
+  // Strategy insight: analyze which strategy wins at each price segment
+  const insight = useMemo(() => {
 
-    const validCurves = curveData.filter(c => {
-      if (c.name === 'custom') return isValidCustom;
-      return true;
-    });
-
-    if (validCurves.length === 0) return null;
+    if (validStrategies.length === 0) return null;
 
     // Use price levels as natural boundaries
     // Between two adjacent price levels, the set of filled positions is constant,
@@ -403,16 +416,19 @@ export default function Home() {
 
     for (let i = 0; i < activeLevels.length; i++) {
       const testPrice = activeLevels[i];
-      const profits = validCurves.map(c => ({
-        name: c.name,
-        label: c.label,
-        profit: c.points.find(p => p.x === testPrice)?.y ?? 0,
+      // Calculate profit directly — works for any price, no grid alignment needed
+      const profits = validStrategies.map(s => ({
+        name: s.name,
+        label: s.label,
+        profit: calculateStats(s.levels, testPrice, config.ath, config.maxPosition).profit,
       }));
 
       const maxProfit = Math.max(...profits.map(p => p.profit));
       if (maxProfit <= 0) continue;
 
-      const winner = profits.find(p => p.profit === maxProfit);
+      // Prefer custom on tie (user hand-tuned > preset)
+      const winners = profits.filter(p => p.profit === maxProfit);
+      const winner = winners.find(w => w.name === 'custom') ?? winners[0];
       if (!winner) continue;
 
       winCounts.set(winner.name, (winCounts.get(winner.name) || 0) + 1);
@@ -469,13 +485,14 @@ export default function Home() {
       if (count > bestStrategy.count) {
         bestStrategy = {
           name,
-          label: validCurves.find(c => c.name === name)?.label || name,
+          label: validStrategies.find(s => s.name === name)?.label || name,
           count,
         };
       }
     });
 
     // Calculate best strategy coverage as percentage of total price range
+    // Clamp segment bounds to reboundRange to avoid negative/overflow coverage
     let coveragePct = 0;
     if (bestStrategy.name) {
       let bestCoverage = 0;
@@ -484,7 +501,9 @@ export default function Home() {
         const lowIdx = activeLevels.indexOf(seg.lowPrice);
         const isLastLevel = lowIdx === activeLevels.length - 1;
         const lowerBound = isLastLevel ? config.reboundMin : activeLevels[lowIdx + 1] + config.reboundStep;
-        bestCoverage += (seg.highPrice - lowerBound) / config.reboundStep + 1;
+        const clampedHigh = Math.min(seg.highPrice, config.reboundMax);
+        const clampedLow = Math.max(lowerBound, config.reboundMin);
+        bestCoverage += Math.max(0, (clampedHigh - clampedLow) / config.reboundStep + 1);
       }
       const totalSteps = (config.reboundMax - config.reboundMin) / config.reboundStep + 1;
       coveragePct = Math.round(bestCoverage / totalSteps * 100);
@@ -500,7 +519,7 @@ export default function Home() {
       bestStrategy: bestStrategy.name ? bestStrategy : null,
       coveragePct,
     };
-  }, [curveData, isValidCustom, config.priceLevels, config.reboundStep, config.reboundMin, config.reboundMax]);
+  }, [validStrategies, config.priceLevels, config.ath, config.maxPosition, config.reboundMin, config.reboundMax, config.reboundStep]);
 
   const applyStrategy = (strategy: StrategyName) => {
     setSelectedStrategy(strategy);
@@ -1504,32 +1523,32 @@ export default function Home() {
         </div>
 
         {/* 策略建议 */}
-        {curveInsight && (
+        {insight && (
           <div className="bg-zinc-900 rounded-xl p-5 mb-6">
             <h2 className="text-base font-medium text-zinc-300 mb-4">策略建议</h2>
 
             <div className="grid grid-cols-2 gap-6">
               {/* 左侧：结论 */}
-              {curveInsight.bestStrategy && (
+              {insight.bestStrategy && (
                 <div className="py-4 px-5 bg-zinc-800/50 rounded-lg border border-zinc-700/50 text-center">
                   <div className="text-xs text-zinc-500 mb-1">推荐策略</div>
                   <div className="text-2xl font-bold text-emerald-400">
-                    {curveInsight.bestStrategy.label}
+                    {insight.bestStrategy.label}
                   </div>
                   <div className="text-xs text-zinc-500 mt-2">
-                    覆盖 {curveInsight.coveragePct}% 价格区间
+                    覆盖 {insight.coveragePct}% 价格区间
                   </div>
                 </div>
               )}
 
               {/* 右侧：分情况讨论 */}
               <div className="space-y-2 text-sm text-zinc-400">
-                {curveInsight.zeroZoneLabel && (
+                {insight.zeroZoneLabel && (
                   <p>
-                    当反弹价格 <span className="text-zinc-300 font-mono">{curveInsight.zeroZoneLabel}</span> 时，所有方案都无收益
+                    当反弹价格 <span className="text-zinc-300 font-mono">{insight.zeroZoneLabel}</span> 时，所有方案都无收益
                   </p>
                 )}
-                {curveInsight.segments.map((seg, i) => (
+                {insight.segments.map((seg, i) => (
                   <p key={i}>
                     当反弹价格在 <span className="text-zinc-300 font-mono">{seg.range}</span> 时，
                     <span className="text-emerald-400 font-medium">{seg.label}</span> 收益最高
