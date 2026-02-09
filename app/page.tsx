@@ -401,7 +401,7 @@ export default function Home() {
         if (currentWinner !== null && segmentStartPrice !== null) {
           segments.push({
             startPrice: segmentStartPrice,
-            endPrice: price + config.reboundStep,
+            endPrice: price,
             winner: currentWinner,
             label: getLabelForName(currentWinner),
           });
@@ -421,7 +421,7 @@ export default function Home() {
           if (currentWinner !== null && segmentStartPrice !== null) {
             segments.push({
               startPrice: segmentStartPrice,
-              endPrice: price + config.reboundStep,
+              endPrice: price,
               winner: currentWinner,
               label: getLabelForName(currentWinner),
             });
