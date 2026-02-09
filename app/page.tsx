@@ -989,8 +989,8 @@ export default function Home() {
                     {/* Main row: Y-axis title + Y-axis + Canvas */}
                     <div className="flex">
                       {/* Y-axis title */}
-                      <div className="flex items-center mr-1">
-                        <span className="text-[10px] text-zinc-500 [writing-mode:vertical-lr] rotate-180 tracking-wider">价格 (USD)</span>
+                      <div className="flex items-center justify-center overflow-visible" style={{ width: '14px' }}>
+                        <span className="text-[10px] text-zinc-500 -rotate-90 whitespace-nowrap">价格 (USD)</span>
                       </div>
                       {/* Y-axis labels (outside canvas, left column) */}
                       <div className="relative flex flex-col justify-between text-[10px] text-zinc-400 pr-2 py-1" style={{ minWidth: '60px' }}>
@@ -1083,7 +1083,7 @@ export default function Home() {
                                 {isCurrent && s.totalPosition > 0 && (
                                   <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="text-[11px] text-emerald-300/70 text-center leading-relaxed">
-                                      <div className="font-medium">{formatUSD(s.profit)}</div>
+                                      <div className="font-medium">盈利额 {formatUSD(s.profit)}</div>
                                       <div className="text-[10px] text-emerald-300/50">
                                         = ({formatUSD(config.ath)} − {formatUSD(s.avgCost)}) × {s.totalPosition.toFixed(2)} {config.assetUnit}
                                       </div>
@@ -1103,7 +1103,7 @@ export default function Home() {
                       {/* X-axis labels aligned with canvas */}
                       <div className="relative flex-1 text-[10px] text-zinc-500 mt-1 px-1">
                         <div className="flex justify-between">
-                          <span>0</span>
+                          <span>0 {config.assetUnit}</span>
                           <span>{(maxPos / 2).toFixed(1)} {config.assetUnit}</span>
                           <span>{maxPos} {config.assetUnit}</span>
                         </div>
@@ -1262,8 +1262,8 @@ export default function Home() {
                   <div className="flex flex-col">
                     <div className="flex">
                       {/* Y-axis title */}
-                      <div className="flex items-center mr-1">
-                        <span className="text-[10px] text-zinc-500 [writing-mode:vertical-lr] rotate-180 tracking-wider">盈利额 (USD)</span>
+                      <div className="flex items-center justify-center overflow-visible" style={{ width: '14px' }}>
+                        <span className="text-[10px] text-zinc-500 -rotate-90 whitespace-nowrap">盈利额 (USD)</span>
                       </div>
                       {/* Y-axis labels */}
                       <div className="relative flex flex-col justify-between text-[10px] text-zinc-400 pr-2 py-1" style={{ minWidth: '60px' }}>
