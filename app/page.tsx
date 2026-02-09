@@ -1367,6 +1367,31 @@ export default function Home() {
                             );
                           })}
                         </svg>
+
+                        {/* Tooltip at current strategy point */}
+                        {(() => {
+                          const currentCurve = visibleCurves.find(c => c.name === currentStrategyName);
+                          const point = currentCurve?.points.find(p => p.x === reboundPrice);
+                          if (!point || !currentCurve) return null;
+                          const pct = Math.round(point.y / theoreticalMax * 100);
+                          const leftPct = ((reboundPrice - xMin) / xRange) * 100;
+                          const topPct = ((point.y - minProfit) / profitRange) * 100;
+                          const flipLeft = leftPct > 85;
+                          return (
+                            <div
+                              className="absolute pointer-events-none"
+                              style={{
+                                left: `${leftPct}%`,
+                                bottom: `${topPct}%`,
+                                transform: flipLeft ? 'translate(calc(-100% - 8px), 50%)' : 'translate(8px, 50%)',
+                              }}
+                            >
+                              <div className="bg-zinc-900/90 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] text-emerald-400 whitespace-nowrap">
+                                {pct}% of max
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 
