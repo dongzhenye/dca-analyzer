@@ -245,6 +245,25 @@ export default function Home() {
     });
   }, [config.reboundMin, config.reboundMax, config.reboundStep]);
 
+  // Keyboard arrow keys to adjust rebound price
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        setReboundPrice(prev => {
+          const delta = e.key === 'ArrowRight' ? config.reboundStep : -config.reboundStep;
+          const next = prev + delta;
+          return Math.max(config.reboundMin, Math.min(config.reboundMax, next));
+        });
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [config.reboundStep, config.reboundMin, config.reboundMax]);
+
   // Sync custom levels when config price levels change
   const syncCustomLevelsToConfig = (newConfig: Config) => {
     const activeLevels = newConfig.priceLevels.filter((p) => p > 0);
@@ -918,6 +937,7 @@ export default function Home() {
           />
           <div className="flex justify-between text-xs text-zinc-500 mt-2">
             <span>{formatUSD(config.reboundMin)}</span>
+            <span className="text-zinc-600">键盘左右微调</span>
             <span>{formatUSD(config.reboundMax)}</span>
           </div>
         </div>
