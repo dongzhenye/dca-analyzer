@@ -378,88 +378,90 @@ export default function Home() {
 
     if (validCurves.length === 0) return null;
 
-    // Helper to safely get label for a strategy name
-    const getLabelForName = (name: string): string =>
-      validCurves.find(c => c.name === name)?.label ?? name;
+    // Use price levels as natural boundaries
+    // Between two adjacent price levels, the set of filled positions is constant,
+    // so strategy rankings only change at price level boundaries.
+    const activeLevels = [...config.priceLevels.filter(p => p > 0)].sort((a, b) => b - a);
 
-    // Price points from high to low
-    const prices = [...validCurves[0].points.map(p => p.x)].reverse();
+    if (activeLevels.length === 0) return null;
 
-    // Track segments and coverage
-    interface Segment {
-      startPrice: number;
-      endPrice: number;
+    const winCounts = new Map<string, number>();
+    const highestLevel = activeLevels[0];
+
+    // Zone above highest level: no positions filled, no profit
+    // (rebound > highest level means price hasn't dropped to any buy level)
+    const zeroZoneLabel = `> ${formatUSD(highestLevel)}`;
+
+    // For each price level, test which strategy wins
+    // activeLevels is sorted high→low: [70k, 65k, 60k, ...]
+    interface LevelResult {
+      price: number;
       winner: string;
       label: string;
     }
+    const levelResults: LevelResult[] = [];
 
-    const segments: Segment[] = [];
-    let currentWinner: string | null = null;
-    let segmentStartPrice: number | null = null;
-    let allZeroStart: number | null = null;
-    let allZeroEnd: number | null = null;
-
-    // Track coverage for each strategy (count of price points where it wins)
-    const winCounts = new Map<string, number>();
-
-    for (const price of prices) {
+    for (let i = 0; i < activeLevels.length; i++) {
+      const testPrice = activeLevels[i];
       const profits = validCurves.map(c => ({
         name: c.name,
         label: c.label,
-        profit: c.points.find(p => p.x === price)?.y ?? 0,
+        profit: c.points.find(p => p.x === testPrice)?.y ?? 0,
       }));
 
       const maxProfit = Math.max(...profits.map(p => p.profit));
+      if (maxProfit <= 0) continue;
 
-      if (maxProfit <= 0) {
-        // No profit zone
-        if (allZeroStart === null) allZeroStart = price;
-        allZeroEnd = price;
+      const winner = profits.find(p => p.profit === maxProfit);
+      if (!winner) continue;
 
-        // Close any open segment
-        if (currentWinner !== null && segmentStartPrice !== null) {
-          segments.push({
-            startPrice: segmentStartPrice,
-            endPrice: price,
-            winner: currentWinner,
-            label: getLabelForName(currentWinner),
-          });
-          currentWinner = null;
-          segmentStartPrice = null;
-        }
+      winCounts.set(winner.name, (winCounts.get(winner.name) || 0) + 1);
+      levelResults.push({ price: testPrice, winner: winner.name, label: winner.label });
+    }
+
+    // Merge consecutive levels with same winner into segments
+    interface MergedSegment {
+      highPrice: number; // highest level price (inclusive)
+      lowPrice: number;  // lowest level price (inclusive)
+      winner: string;
+      label: string;
+    }
+    const mergedSegments: MergedSegment[] = [];
+
+    for (const lr of levelResults) {
+      const last = mergedSegments[mergedSegments.length - 1];
+      if (last && last.winner === lr.winner) {
+        last.lowPrice = lr.price;
       } else {
-        // Has profit, find winner
-        const winner = profits.find(p => p.profit === maxProfit);
-        if (!winner) continue;
-
-        // Track win count
-        winCounts.set(winner.name, (winCounts.get(winner.name) || 0) + 1);
-
-        if (winner.name !== currentWinner) {
-          // Strategy switch - close previous segment
-          if (currentWinner !== null && segmentStartPrice !== null) {
-            segments.push({
-              startPrice: segmentStartPrice,
-              endPrice: price,
-              winner: currentWinner,
-              label: getLabelForName(currentWinner),
-            });
-          }
-          currentWinner = winner.name;
-          segmentStartPrice = price;
-        }
+        mergedSegments.push({
+          highPrice: lr.price,
+          lowPrice: lr.price,
+          winner: lr.winner,
+          label: lr.label,
+        });
       }
     }
 
-    // Close the last segment (reaches reboundMin)
-    if (currentWinner !== null && segmentStartPrice !== null) {
-      segments.push({
-        startPrice: segmentStartPrice,
-        endPrice: config.reboundMin,
-        winner: currentWinner,
-        label: getLabelForName(currentWinner),
-      });
-    }
+    // Format segment range:
+    // Each level at price X covers rebound prices where X is the lowest newly-filled level.
+    // That means: rebound in [X, level_above_X).
+    // When merged: rebound in [lowPrice, level_above_highPrice).
+    // We express this as: ≤ highPrice 且 > level_below_lowPrice
+    const formatSegment = (seg: MergedSegment, idx: number): string => {
+      const isLast = idx === mergedSegments.length - 1;
+
+      // Upper bound: ≤ highPrice (inclusive, this level IS filled at this price)
+      const upper = `≤ ${formatUSD(seg.highPrice)}`;
+
+      // Lower bound: > next_lower_level (exclusive, because AT that level the filled set changes)
+      // For the last segment (lowest levels), no lower bound needed — covers all prices below
+      const lowIdx = activeLevels.indexOf(seg.lowPrice);
+      if (isLast || lowIdx === activeLevels.length - 1) {
+        return upper;
+      }
+      const lower = `> ${formatUSD(activeLevels[lowIdx + 1])}`;
+      return `${upper} 且 ${lower}`;
+    };
 
     // Find best strategy by coverage
     let bestStrategy = { name: '', label: '', count: 0 };
@@ -473,26 +475,32 @@ export default function Home() {
       }
     });
 
-    // Format price range with proper interval notation
-    const formatRange = (start: number, end: number): string => {
-      if (start === end) return formatUSD(start);
-      // For the lowest segment, use closed interval at the bottom
-      const isLowestSegment = end === config.reboundMin;
-      return isLowestSegment
-        ? `(${formatUSD(start)}, ${formatUSD(end)}]`
-        : `(${formatUSD(start)}, ${formatUSD(end)})`;
-    };
+    // Calculate best strategy coverage as percentage of total price range
+    let coveragePct = 0;
+    if (bestStrategy.name) {
+      let bestCoverage = 0;
+      for (const seg of mergedSegments) {
+        if (seg.winner !== bestStrategy.name) continue;
+        const lowIdx = activeLevels.indexOf(seg.lowPrice);
+        const isLastLevel = lowIdx === activeLevels.length - 1;
+        const lowerBound = isLastLevel ? config.reboundMin : activeLevels[lowIdx + 1] + config.reboundStep;
+        bestCoverage += (seg.highPrice - lowerBound) / config.reboundStep + 1;
+      }
+      const totalSteps = (config.reboundMax - config.reboundMin) / config.reboundStep + 1;
+      coveragePct = Math.round(bestCoverage / totalSteps * 100);
+    }
 
     return {
-      allZeroStart: allZeroStart !== null ? formatUSD(allZeroStart) : null,
-      segments: segments.map(s => ({
-        range: formatRange(s.startPrice, s.endPrice),
+      zeroZoneLabel,
+      segments: mergedSegments.map((s, i) => ({
+        range: formatSegment(s, i),
         winner: s.winner,
         label: s.label,
       })),
       bestStrategy: bestStrategy.name ? bestStrategy : null,
+      coveragePct,
     };
-  }, [curveData, isValidCustom, config.reboundMin, config.reboundStep]);
+  }, [curveData, isValidCustom, config.priceLevels, config.reboundStep, config.reboundMin, config.reboundMax]);
 
   const applyStrategy = (strategy: StrategyName) => {
     setSelectedStrategy(strategy);
@@ -1509,16 +1517,16 @@ export default function Home() {
                     {curveInsight.bestStrategy.label}
                   </div>
                   <div className="text-xs text-zinc-500 mt-2">
-                    覆盖 {Math.round(curveInsight.bestStrategy.count / ((config.reboundMax - config.reboundMin) / config.reboundStep + 1) * 100)}% 价格区间
+                    覆盖 {curveInsight.coveragePct}% 价格区间
                   </div>
                 </div>
               )}
 
               {/* 右侧：分情况讨论 */}
               <div className="space-y-2 text-sm text-zinc-400">
-                {curveInsight.allZeroStart && (
+                {curveInsight.zeroZoneLabel && (
                   <p>
-                    当反弹价格在 <span className="text-zinc-300 font-mono">{curveInsight.allZeroStart}</span> 以上时，所有方案都无收益
+                    当反弹价格 <span className="text-zinc-300 font-mono">{curveInsight.zeroZoneLabel}</span> 时，所有方案都无收益
                   </p>
                 )}
                 {curveInsight.segments.map((seg, i) => (
