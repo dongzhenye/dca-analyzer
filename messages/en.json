@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "Position Simulator",
-    "description": "Compare profit performance across DCA strategies"
+    "title": "DCA Analyzer",
+    "description": "Compare dollar-cost averaging strategies for buying the dip"
   },
   "common": {
     "collapse": "Collapse",
@@ -14,13 +14,13 @@
     "title": "Configuration",
     "assetName": "Asset Name",
     "unit": "Unit",
-    "totalSize": "Max Position ({unit})",
+    "totalSize": "Total Size ({unit})",
     "targetPrice": "Target Price (ATH)",
     "targetDate": "Target Date",
     "priceLevels": "Entry Price Levels (empty = disabled)",
-    "priceLevelsHint": "Allocation per level is determined by strategy. Total = max position.",
+    "priceLevelsHint": "Allocation per level is determined by strategy. Total = total size.",
     "empty": "Empty",
-    "bottomRange": "Bottom Simulation Range",
+    "bottomRange": "Bottom Price Range",
     "recommended": "Suggested",
     "minPrice": "Min Price",
     "maxPrice": "Max Price",
@@ -28,7 +28,7 @@
     "warning": "Config Warning"
   },
   "strategy": {
-    "title": "Entry Strategy",
+    "title": "DCA Strategy",
     "pyramid": {
       "name": "Pyramid",
       "tooltip": "Buy more as price drops — heavy at the bottom"
@@ -57,7 +57,7 @@
     "areaView": "Area Chart",
     "curveView": "Profit Curve",
     "priceAxis": "Price (USD)",
-    "positionAxis": "Position ({unit})",
+    "positionAxis": "Size ({unit})",
     "profitAxis": "Profit (USD)",
     "bottomAxis": "Bottom Price (USD)",
     "profit": "Profit {amount}",
