@@ -215,8 +215,9 @@ export function useSimulator() {
     [customAllocations]
   );
 
+  const TOL = CONSTANTS.ALLOCATION_TOLERANCE;
   const isCustomWeightValid =
-    Math.abs(customWeightSum - 1) < CONSTANTS.ALLOCATION_TOLERANCE;
+    customWeightSum > TOL && customWeightSum < 1 + TOL;
 
   // Comparable strategies: presets always included, custom only when allocation sums to ~100%
   const comparableStrategies = useMemo((): ComparableStrategy[] => {
