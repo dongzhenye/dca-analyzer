@@ -13,7 +13,7 @@ interface StrategySelectorProps {
   activeAllocations: Allocation[];
   reboundPrice: number;
   isCustomActive: boolean;
-  totalWeight: number;
+  activeWeightSum: number;
   onSelectPreset: (strategy: PresetStrategy) => void;
   onSelectCustom: () => void;
   onUpdateCustomWeight: (index: number, weight: number) => void;
@@ -26,7 +26,7 @@ export function StrategySelector({
   activeAllocations,
   reboundPrice,
   isCustomActive,
-  totalWeight,
+  activeWeightSum,
   onSelectPreset,
   onSelectCustom,
   onUpdateCustomWeight,
@@ -151,9 +151,9 @@ export function StrategySelector({
           重置自定义
         </button>
         <span
-          className={`text-sm ${Math.abs(totalWeight - 1) < CONSTANTS.ALLOCATION_TOLERANCE ? "text-emerald-400" : "text-amber-400"}`}
+          className={`text-sm ${Math.abs(activeWeightSum - 1) < CONSTANTS.ALLOCATION_TOLERANCE ? "text-emerald-400" : "text-amber-400"}`}
         >
-          总仓位: {(totalWeight * 100).toFixed(0)}%
+          总仓位: {(activeWeightSum * 100).toFixed(0)}%
         </span>
       </div>
     </div>

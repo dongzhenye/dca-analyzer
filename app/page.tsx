@@ -98,7 +98,7 @@ export default function Home() {
           activeAllocations={sim.activeAllocations}
           reboundPrice={sim.reboundPrice}
           isCustomActive={sim.isCustomActive}
-          totalWeight={sim.totalWeight}
+          activeWeightSum={sim.activeWeightSum}
           onSelectPreset={sim.selectPreset}
           onSelectCustom={sim.selectCustom}
           onUpdateCustomWeight={sim.updateCustomWeight}
@@ -140,7 +140,7 @@ export default function Home() {
               customAllocations={sim.customAllocations}
               activeStrategy={sim.activeStrategy}
               reboundPrice={sim.reboundPrice}
-              isValidCustom={sim.isValidCustom}
+              isCustomWeightValid={sim.isCustomWeightValid}
               profitRankings={sim.profitRankings}
               onSelectPreset={sim.selectPreset}
               onSelectCustom={sim.selectCustom}
@@ -151,7 +151,7 @@ export default function Home() {
               profitCurves={sim.profitCurves}
               activeStrategy={sim.activeStrategy}
               reboundPrice={sim.reboundPrice}
-              isValidCustom={sim.isValidCustom}
+              isCustomWeightValid={sim.isCustomWeightValid}
               profitRankings={sim.profitRankings}
               onReboundChange={sim.setReboundPrice}
               onSelectPreset={sim.selectPreset}

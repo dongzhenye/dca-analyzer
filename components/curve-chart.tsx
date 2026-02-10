@@ -14,7 +14,7 @@ interface CurveChartProps {
   profitCurves: ProfitCurve[];
   activeStrategy: ActiveStrategy;
   reboundPrice: number;
-  isValidCustom: boolean;
+  isCustomWeightValid: boolean;
   profitRankings: Map<string, number>;
   onReboundChange: (price: number) => void;
   onSelectPreset: (name: PresetStrategy) => void;
@@ -26,7 +26,7 @@ export function CurveChart({
   profitCurves,
   activeStrategy,
   reboundPrice,
-  isValidCustom,
+  isCustomWeightValid,
   profitRankings,
   onReboundChange,
   onSelectPreset,
@@ -38,7 +38,7 @@ export function CurveChart({
 
   // Filter curve data
   const visibleCurves = profitCurves.filter((c) => {
-    if (c.name === "custom") return isValidCustom;
+    if (c.name === "custom") return isCustomWeightValid;
     return true;
   });
 
@@ -321,7 +321,7 @@ export function CurveChart({
         items={currentProfits}
         activeStrategy={activeStrategy}
         profitRankings={profitRankings}
-        isValidCustom={isValidCustom}
+        isCustomWeightValid={isCustomWeightValid}
         onSelectPreset={onSelectPreset}
         onSelectCustom={onSelectCustom}
       />

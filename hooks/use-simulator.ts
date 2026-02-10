@@ -216,13 +216,13 @@ export function useSimulator() {
   }, [config, strategies, customAllocations, activePriceLevels]);
 
   // Cache custom allocation total for reuse
-  const customTotal = useMemo(
+  const customWeightSum = useMemo(
     () => customAllocations.reduce((sum, l) => sum + l.weight, 0),
     [customAllocations]
   );
 
-  const isValidCustom =
-    Math.abs(customTotal - 1) < CONSTANTS.ALLOCATION_TOLERANCE;
+  const isCustomWeightValid =
+    Math.abs(customWeightSum - 1) < CONSTANTS.ALLOCATION_TOLERANCE;
 
   // Comparable strategies: presets always included, custom only when allocation sums to ~100%
   const comparableStrategies = useMemo((): ComparableStrategy[] => {
@@ -234,7 +234,7 @@ export function useSimulator() {
         weight: strategies[name][i] ?? 0,
       })),
     }));
-    if (isValidCustom) {
+    if (isCustomWeightValid) {
       list.push({
         name: "custom",
         label: "自定义",
@@ -242,7 +242,7 @@ export function useSimulator() {
       });
     }
     return list;
-  }, [activePriceLevels, strategies, isValidCustom, customAllocations]);
+  }, [activePriceLevels, strategies, isCustomWeightValid, customAllocations]);
 
   // Calculate profit rankings for legend display
   const profitRankings = useMemo(() => {
@@ -257,7 +257,7 @@ export function useSimulator() {
       ...presetStats.map((s) => ({ name: s.name, profit: s.profit })),
     ];
 
-    if (isValidCustom) {
+    if (isCustomWeightValid) {
       allProfits.push({ name: "custom", profit: customStats.profit });
     }
 
@@ -274,7 +274,7 @@ export function useSimulator() {
     reboundPrice,
     config.targetPrice,
     config.totalSize,
-    isValidCustom,
+    isCustomWeightValid,
   ]);
 
   // Strategy advice
@@ -320,7 +320,7 @@ export function useSimulator() {
     setIsCustomActive(false);
   };
 
-  const totalWeight = activeAllocations.reduce(
+  const activeWeightSum = activeAllocations.reduce(
     (sum, l) => sum + l.weight,
     0
   );
@@ -351,8 +351,8 @@ export function useSimulator() {
     profitRankings,
     strategyAdvice,
     // Computed flags
-    isValidCustom,
-    totalWeight,
-    customTotal,
+    isCustomWeightValid,
+    activeWeightSum,
+    customWeightSum,
   };
 }

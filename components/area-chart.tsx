@@ -17,7 +17,7 @@ interface AreaChartProps {
   customAllocations: Allocation[];
   activeStrategy: ActiveStrategy;
   reboundPrice: number;
-  isValidCustom: boolean;
+  isCustomWeightValid: boolean;
   profitRankings: Map<string, number>;
   onSelectPreset: (name: PresetStrategy) => void;
   onSelectCustom: () => void;
@@ -29,7 +29,7 @@ export function AreaChart({
   customAllocations,
   activeStrategy,
   reboundPrice,
-  isValidCustom,
+  isCustomWeightValid,
   profitRankings,
   onSelectPreset,
   onSelectCustom,
@@ -81,7 +81,7 @@ export function AreaChart({
       label: s.label,
       profit: s.profit,
     })),
-    ...(isValidCustom && customStats.filledPosition > 0
+    ...(isCustomWeightValid && customStats.filledPosition > 0
       ? [{ name: "custom", label: "自定义", profit: customStats.profit }]
       : []),
   ];
@@ -165,7 +165,7 @@ export function AreaChart({
             {allStats
               .filter((s) => {
                 if (s.name === "custom") {
-                  return isValidCustom && s.filledPosition > 0;
+                  return isCustomWeightValid && s.filledPosition > 0;
                 }
                 return s.filledPosition > 0;
               })
@@ -264,7 +264,7 @@ export function AreaChart({
         items={legendItems}
         activeStrategy={activeStrategy}
         profitRankings={profitRankings}
-        isValidCustom={isValidCustom}
+        isCustomWeightValid={isCustomWeightValid}
         onSelectPreset={onSelectPreset}
         onSelectCustom={onSelectCustom}
       />
