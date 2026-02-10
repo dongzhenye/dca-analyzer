@@ -9,9 +9,9 @@ lib/
   types.ts          — shared TypeScript interfaces and type aliases
   constants.ts      — magic numbers, default config, chart dimensions
   formatting.ts     — display formatting (USD, price sorting)
-  strategies.ts     — preset strategy weight generation, labels
+  strategies.ts     — preset strategy weight generation (labels moved to i18n)
   calculations.ts   — core math: filled levels → stats (cost, profit, return)
-  advice.ts         — strategy comparison across bottom price range → recommendation
+  advice.ts         — strategy comparison → structured recommendation (no strings)
 
 hooks/
   use-simulator.ts  — all state + derived data, single hook consumed by page
@@ -24,9 +24,24 @@ components/
   curve-chart.tsx       — SVG line chart showing profit across bottom price range
   chart-legend.tsx      — shared legend with rankings, click-to-switch (used by both charts)
   advice-panel.tsx      — strategy recommendation display with segment breakdown
+  locale-switcher.tsx   — EN/中 toggle for language switching
+
+i18n/
+  routing.ts        — defineRouting: locales ['en', 'zh'], defaultLocale 'en'
+  request.ts        — getRequestConfig: loads messages JSON per locale
+  navigation.ts     — createNavigation: locale-aware Link, useRouter, etc.
+
+messages/
+  en.json           — English translations (primary)
+  zh.json           — Simplified Chinese translations
+
+middleware.ts       — next-intl middleware (locale detection/redirect)
 
 app/
-  page.tsx          — composition layer (~170 lines), wires hook to components
+  layout.tsx        — root layout shell (passthrough to [locale])
+  [locale]/
+    layout.tsx      — LocaleLayout: NextIntlClientProvider, html lang, metadata
+    page.tsx        — composition layer, wires hook to components
 ```
 
 ## Key Design Decisions

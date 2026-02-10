@@ -44,7 +44,7 @@ export function AdvicePanel({ advice }: AdvicePanelProps) {
               : `≤ ${formatUSD(seg.rangeHigh)} & > ${formatUSD(seg.rangeLow)}`;
             return (
               <p key={i}>
-                {t.rich("bestIn", {
+                {t("bestIn", {
                   range: rangeStr,
                   strategy: strategyName(seg.winner),
                 })}
