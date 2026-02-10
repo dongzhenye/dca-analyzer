@@ -1,0 +1,46 @@
+import type { PresetStrategy } from "./types";
+
+// Generate preset strategy allocations for a given number of levels.
+// Each returns an array of weights that sum to 1.
+export function generateStrategies(levelCount: number) {
+  // Pyramid: weights increase linearly (1, 2, 3, ...)
+  const pyramidWeights = Array.from({ length: levelCount }, (_, i) => i + 1);
+  const pyramidSum = pyramidWeights.reduce((a, b) => a + b, 0);
+  const pyramid = pyramidWeights.map((w) => w / pyramidSum);
+
+  // Inverted: reverse of pyramid
+  const inverted = [...pyramid].reverse();
+
+  // Uniform: equal allocation
+  const uniformBase = 1 / levelCount;
+  const uniform = Array(levelCount).fill(uniformBase) as number[];
+  // Adjust last one to ensure sum = 1
+  uniform[levelCount - 1] = 1 - uniformBase * (levelCount - 1);
+
+  return { pyramid, uniform, inverted };
+}
+
+// Exponential weighting: first level (highest price) gets highest weight.
+// Uses base 1.8 — produces a steep falloff (e.g. 35%, 20%, 11%, 6%, 3%, 2%, 1% for 7 levels).
+export function generateExponentialWeights(levelCount: number): number[] {
+  const weights = Array.from({ length: levelCount }, (_, i) =>
+    Math.pow(1.8, levelCount - 1 - i)
+  );
+  const sum = weights.reduce((a, b) => a + b, 0);
+  return weights.map((w) => w / sum);
+}
+
+export const STRATEGY_ORDER: PresetStrategy[] = [
+  "pyramid",
+  "uniform",
+  "inverted",
+];
+
+export const STRATEGY_LABELS: Record<
+  PresetStrategy,
+  { name: string; tooltip: string }
+> = {
+  pyramid: { name: "金字塔", tooltip: "越跌越买，低位重仓" },
+  uniform: { name: "均匀", tooltip: "均匀分配，平均成本" },
+  inverted: { name: "倒金字塔", tooltip: "高位重仓，确保参与" },
+};
