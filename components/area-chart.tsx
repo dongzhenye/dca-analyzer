@@ -8,7 +8,7 @@ import type {
 } from "@/lib/types";
 import { CONSTANTS } from "@/lib/constants";
 import { formatUSD } from "@/lib/formatting";
-import { calculateStats } from "@/lib/calculations";
+import { calculatePositionStats } from "@/lib/calculations";
 import { ChartLegend } from "./chart-legend";
 
 interface AreaChartProps {
@@ -40,7 +40,7 @@ export function AreaChart({
 
   const customStats = useMemo(
     () =>
-      calculateStats(
+      calculatePositionStats(
         customAllocations.filter((l) => l.price > 0),
         reboundPrice,
         config.targetPrice,

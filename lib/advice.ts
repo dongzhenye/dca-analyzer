@@ -1,7 +1,7 @@
 // Strategy advice algorithm — see docs/strategy-advice-algorithm.md for detailed explanation.
 
 import type { ComparableStrategy, StrategyAdvice } from "./types";
-import { calculateStats } from "./calculations";
+import { calculatePositionStats } from "./calculations";
 import { formatUSD } from "./formatting";
 
 export function analyzeStrategyAdvice(
@@ -42,7 +42,7 @@ export function analyzeStrategyAdvice(
     const profits = strategies.map((s) => ({
       name: s.name,
       label: s.label,
-      profit: calculateStats(s.allocations, testPrice, targetPrice, totalSize)
+      profit: calculatePositionStats(s.allocations, testPrice, targetPrice, totalSize)
         .profit,
     }));
 

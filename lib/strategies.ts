@@ -2,7 +2,7 @@ import type { PresetStrategy } from "./types";
 
 // Generate preset strategy allocations for a given number of levels.
 // Each returns an array of weights that sum to 1.
-export function generateStrategies(levelCount: number) {
+export function generatePresetWeights(levelCount: number) {
   // Pyramid: weights increase linearly (1, 2, 3, ...)
   const pyramidWeights = Array.from({ length: levelCount }, (_, i) => i + 1);
   const pyramidSum = pyramidWeights.reduce((a, b) => a + b, 0);

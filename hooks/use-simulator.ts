@@ -10,12 +10,12 @@ import type {
 } from "@/lib/types";
 import { CONSTANTS, DEFAULT_CONFIG } from "@/lib/constants";
 import {
-  generateStrategies,
+  generatePresetWeights,
   generateExponentialWeights,
   STRATEGY_ORDER,
   STRATEGY_LABELS,
 } from "@/lib/strategies";
-import { calculateStats } from "@/lib/calculations";
+import { calculatePositionStats } from "@/lib/calculations";
 import { analyzeStrategyAdvice } from "@/lib/advice";
 
 export function useSimulator() {
@@ -29,7 +29,7 @@ export function useSimulator() {
 
   // Derived strategies based on active levels count
   const strategies = useMemo(
-    () => generateStrategies(activePriceLevels.length || 1),
+    () => generatePresetWeights(activePriceLevels.length || 1),
     [activePriceLevels.length]
   );
 
@@ -163,7 +163,7 @@ export function useSimulator() {
       return {
         name: strategy,
         label: STRATEGY_LABELS[strategy].name,
-        ...calculateStats(
+        ...calculatePositionStats(
           strategyLevels,
           reboundPrice,
           config.targetPrice,
@@ -204,7 +204,7 @@ export function useSimulator() {
             : STRATEGY_LABELS[strategyName].name,
         points: prices.map((reboundP) => ({
           x: reboundP,
-          y: calculateStats(
+          y: calculatePositionStats(
             strategyLevels,
             reboundP,
             config.targetPrice,
@@ -246,7 +246,7 @@ export function useSimulator() {
 
   // Calculate profit rankings for legend display
   const profitRankings = useMemo(() => {
-    const customStats = calculateStats(
+    const customStats = calculatePositionStats(
       customAllocations.filter((l) => l.price > 0),
       reboundPrice,
       config.targetPrice,
