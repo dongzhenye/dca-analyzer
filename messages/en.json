@@ -7,7 +7,6 @@
     "collapse": "Collapse",
     "settings": "Settings",
     "reset": "Reset",
-    "resetDefault": "Reset to Default",
     "custom": "Custom"
   },
   "config": {
@@ -16,7 +15,7 @@
     "unit": "Unit",
     "totalSize": "Total Size ({unit})",
     "targetPrice": "Target Price (ATH)",
-    "targetDate": "Target Date",
+    "targetDate": "Target Date (optional)",
     "priceLevels": "Entry Price Levels (empty = disabled)",
     "priceLevelsHint": "Allocation per level is determined by strategy. Total = total size.",
     "empty": "Empty",
@@ -45,7 +44,6 @@
       "name": "Custom",
       "tooltip": "Freely adjust allocation per price level"
     },
-    "resetCustom": "Reset Custom",
     "totalWeight": "Total: {pct}%"
   },
   "slider": {

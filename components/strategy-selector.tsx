@@ -35,6 +35,7 @@ export function StrategySelector({
   config,
 }: StrategySelectorProps) {
   const t = useTranslations("strategy");
+  const tc = useTranslations("common");
 
   return (
     <div className="bg-zinc-900 rounded-xl p-6 mb-6">
@@ -150,7 +151,7 @@ export function StrategySelector({
           onClick={() => onResetCustomAllocations(config)}
           className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
         >
-          {t("resetCustom")}
+          {tc("reset")}
         </button>
         <span
           className={`text-sm ${Math.abs(activeWeightSum - 1) < CONSTANTS.ALLOCATION_TOLERANCE ? "text-emerald-400" : "text-amber-400"}`}

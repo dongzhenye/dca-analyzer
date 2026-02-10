@@ -1,13 +1,12 @@
 {
   "meta": {
-    "title": "仓位模拟器",
-    "description": "对比不同建仓策略的收益表现"
+    "title": "建仓模拟器",
+    "description": "模拟不同建仓策略，找到最优抄底方案"
   },
   "common": {
     "collapse": "收起",
     "settings": "设置",
     "reset": "重置",
-    "resetDefault": "恢复默认",
     "custom": "自定义"
   },
   "config": {
@@ -16,7 +15,7 @@
     "unit": "单位",
     "totalSize": "最大仓位 ({unit})",
     "targetPrice": "目标价格 (ATH)",
-    "targetDate": "目标日期",
+    "targetDate": "目标日期（可选）",
     "priceLevels": "建仓价格档位 (留空 = 不启用)",
     "priceLevelsHint": "每个档位的仓位比例由策略决定，总和 = 最大仓位",
     "empty": "留空",
@@ -45,7 +44,6 @@
       "name": "自定义",
       "tooltip": "自由调整每个价位的仓位比例"
     },
-    "resetCustom": "重置自定义",
     "totalWeight": "总仓位: {pct}%"
   },
   "slider": {

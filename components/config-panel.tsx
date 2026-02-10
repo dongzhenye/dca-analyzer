@@ -27,7 +27,7 @@ export function ConfigPanel({
           onClick={onResetToDefault}
           className="text-xs px-2 py-1 bg-zinc-800 text-zinc-400 hover:bg-zinc-700 rounded transition-colors"
         >
-          {tc("resetDefault")}
+          {tc("reset")}
         </button>
       </div>
 
