@@ -154,7 +154,12 @@ export function StrategySelector({
           {tc("reset")}
         </button>
         <span
-          className={`text-sm ${Math.abs(activeWeightSum - 1) < CONSTANTS.ALLOCATION_TOLERANCE ? "text-emerald-400" : "text-amber-400"}`}
+          className={`text-sm ${
+            activeWeightSum > 1 + CONSTANTS.ALLOCATION_TOLERANCE ? "text-red-400"
+              : activeWeightSum <= CONSTANTS.ALLOCATION_TOLERANCE ? "text-red-400"
+              : activeWeightSum > 1 - CONSTANTS.ALLOCATION_TOLERANCE ? "text-emerald-400"
+              : "text-amber-400"
+          }`}
         >
           {t("totalWeight", { pct: (activeWeightSum * 100).toFixed(0) })}
         </span>
