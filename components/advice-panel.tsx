@@ -1,10 +1,10 @@
 import type { StrategyAdvice } from "@/lib/types";
 
-interface InsightPanelProps {
+interface AdvicePanelProps {
   advice: StrategyAdvice;
 }
 
-export function InsightPanel({ advice }: InsightPanelProps) {
+export function AdvicePanel({ advice }: AdvicePanelProps) {
   return (
     <div className="bg-zinc-900 rounded-xl p-5 mb-6">
       <h2 className="text-base font-medium text-zinc-300 mb-4">策略建议</h2>

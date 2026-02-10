@@ -7,7 +7,7 @@ import { StrategySelector } from "@/components/strategy-selector";
 import { ReboundSlider } from "@/components/rebound-slider";
 import { AreaChart } from "@/components/area-chart";
 import { CurveChart } from "@/components/curve-chart";
-import { InsightPanel } from "@/components/insight-panel";
+import { AdvicePanel } from "@/components/advice-panel";
 
 export default function Home() {
   const sim = useSimulator();
@@ -161,7 +161,7 @@ export default function Home() {
         </div>
 
         {/* Advice */}
-        {sim.strategyAdvice && <InsightPanel advice={sim.strategyAdvice} />}
+        {sim.strategyAdvice && <AdvicePanel advice={sim.strategyAdvice} />}
 
         {/* Footer */}
         <div className="text-center text-zinc-600 text-xs mt-8">

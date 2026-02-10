@@ -21,10 +21,12 @@ export function generateStrategies(levelCount: number) {
 }
 
 // Exponential weighting: first level (highest price) gets highest weight.
-// Uses base 1.8 — produces a steep falloff (e.g. 35%, 20%, 11%, 6%, 3%, 2%, 1% for 7 levels).
+// Produces a steep falloff (e.g. 35%, 20%, 11%, 6%, 3%, 2%, 1% for 7 levels).
+const EXPONENTIAL_BASE = 1.8;
+
 export function generateExponentialWeights(levelCount: number): number[] {
   const weights = Array.from({ length: levelCount }, (_, i) =>
-    Math.pow(1.8, levelCount - 1 - i)
+    Math.pow(EXPONENTIAL_BASE, levelCount - 1 - i)
   );
   const sum = weights.reduce((a, b) => a + b, 0);
   return weights.map((w) => w / sum);
