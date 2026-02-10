@@ -11,17 +11,17 @@ lib/
   formatting.ts     — display formatting (USD, price sorting)
   strategies.ts     — preset strategy weight generation, labels
   calculations.ts   — core math: filled levels → stats (cost, profit, return)
-  advice.ts         — strategy comparison across rebound range → recommendation
+  advice.ts         — strategy comparison across bottom price range → recommendation
 
 hooks/
   use-simulator.ts  — all state + derived data, single hook consumed by page
 
 components/
-  config-panel.tsx      — collapsible settings: price levels, rebound range, reset
+  config-panel.tsx      — collapsible settings: price levels, bottom price range, reset
   strategy-selector.tsx — preset buttons + custom sliders + weight total
   bottom-slider.tsx     — draggable bottom price selector
-  area-chart.tsx        — SVG bar chart comparing strategies at current rebound
-  curve-chart.tsx       — SVG line chart showing profit across rebound range
+  area-chart.tsx        — SVG bar chart comparing strategies at current bottom price
+  curve-chart.tsx       — SVG line chart showing profit across bottom price range
   chart-legend.tsx      — shared legend with rankings, click-to-switch (used by both charts)
   advice-panel.tsx      — strategy recommendation display with segment breakdown
 
