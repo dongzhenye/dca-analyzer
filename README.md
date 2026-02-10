@@ -1,13 +1,13 @@
-# Position Simulator
+# DCA Analyzer
 
-Interactive BTC position simulator for comparing dollar-cost averaging strategies.
+Interactive BTC DCA analyzer for comparing dollar-cost averaging strategies.
 
 ## Features
 
 - **Strategy Comparison**: Compare multiple DCA strategies side by side
 - **Profit Visualization**: Interactive charts showing profit curves at different price points
 - **Custom Strategies**: Define your own price levels and position sizes
-- **Rebound Analysis**: Drag-to-adjust rebound price to see profit projections
+- **Bottom Price Analysis**: Drag-to-adjust bottom price to see profit projections
 
 ## Development
 

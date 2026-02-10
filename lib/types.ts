@@ -1,4 +1,4 @@
-// Types for the position simulator
+// Types for the dca analyzer
 
 export interface SimulatorConfig {
   assetName: string;
