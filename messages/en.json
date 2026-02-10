@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "title": "Position Simulator",
+    "description": "Compare profit performance across DCA strategies"
+  },
+  "common": {
+    "collapse": "Collapse",
+    "settings": "Settings",
+    "reset": "Reset",
+    "resetDefault": "Reset to Default",
+    "custom": "Custom"
+  },
+  "config": {
+    "title": "Configuration",
+    "assetName": "Asset Name",
+    "unit": "Unit",
+    "totalSize": "Max Position ({unit})",
+    "targetPrice": "Target Price (ATH)",
+    "targetDate": "Target Date",
+    "priceLevels": "Entry Price Levels (empty = disabled)",
+    "priceLevelsHint": "Allocation per level is determined by strategy. Total = max position.",
+    "empty": "Empty",
+    "bottomRange": "Bottom Simulation Range",
+    "recommended": "Suggested",
+    "minPrice": "Min Price",
+    "maxPrice": "Max Price",
+    "step": "Step",
+    "warning": "Config Warning"
+  },
+  "strategy": {
+    "title": "Entry Strategy",
+    "pyramid": {
+      "name": "Pyramid",
+      "tooltip": "Buy more as price drops — heavy at the bottom"
+    },
+    "uniform": {
+      "name": "Uniform",
+      "tooltip": "Equal allocation — average cost"
+    },
+    "inverted": {
+      "name": "Inverted",
+      "tooltip": "Heavy at the top — ensures participation"
+    },
+    "custom": {
+      "name": "Custom",
+      "tooltip": "Freely adjust allocation per price level"
+    },
+    "resetCustom": "Reset Custom",
+    "totalWeight": "Total: {pct}%"
+  },
+  "slider": {
+    "title": "Bottom Price",
+    "keyboardHint": "Use arrow keys to fine-tune"
+  },
+  "chart": {
+    "profitComparison": "Profit Comparison",
+    "areaView": "Area Chart",
+    "curveView": "Profit Curve",
+    "priceAxis": "Price (USD)",
+    "positionAxis": "Position ({unit})",
+    "profitAxis": "Profit (USD)",
+    "bottomAxis": "Bottom Price (USD)",
+    "profit": "Profit {amount}",
+    "profitFormula": "= ({target} − {cost}) × {position} {unit}"
+  },
+  "advice": {
+    "title": "Strategy Advice",
+    "recommended": "Recommended",
+    "coverage": "Covers {pct}% of price range",
+    "noProfit": "When bottom price {range}, no strategy is profitable",
+    "bestIn": "When bottom price is {range}, {strategy} has the highest profit"
+  },
+  "validation": {
+    "needLevel": "At least one valid entry price level is required",
+    "targetTooLow": "Target price ({target}) should be above the highest entry level ({level})",
+    "bottomTooHigh": "Max bottom price ({bottom}) should not be below the lowest entry level ({level})",
+    "minAboveMax": "Min bottom price should be less than max"
+  }
+}
