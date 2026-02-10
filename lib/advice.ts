@@ -42,7 +42,7 @@ export function analyzeStrategyAdvice(
     const profits = strategies.map((s) => ({
       name: s.name,
       label: s.label,
-      profit: calculateStats(s.levels, testPrice, targetPrice, totalSize)
+      profit: calculateStats(s.allocations, testPrice, targetPrice, totalSize)
         .profit,
     }));
 

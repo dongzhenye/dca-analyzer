@@ -229,7 +229,7 @@ export function useSimulator() {
     const list: ComparableStrategy[] = STRATEGY_ORDER.map((name) => ({
       name,
       label: STRATEGY_LABELS[name].name,
-      levels: activePriceLevels.map((price, i) => ({
+      allocations: activePriceLevels.map((price, i) => ({
         price,
         weight: strategies[name][i] ?? 0,
       })),
@@ -238,7 +238,7 @@ export function useSimulator() {
       list.push({
         name: "custom",
         label: "自定义",
-        levels: customAllocations.filter((l) => l.price > 0),
+        allocations: customAllocations.filter((l) => l.price > 0),
       });
     }
     return list;

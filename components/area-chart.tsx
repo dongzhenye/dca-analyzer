@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type {
   SimulatorConfig,
   Allocation,
-  StrategyStats,
+  PositionMetrics,
   ActiveStrategy,
   PresetStrategy,
 } from "@/lib/types";
@@ -13,7 +13,7 @@ import { ChartLegend } from "./chart-legend";
 
 interface AreaChartProps {
   config: SimulatorConfig;
-  presetStats: (StrategyStats & { name: string; label: string })[];
+  presetStats: (PositionMetrics & { name: string; label: string })[];
   customAllocations: Allocation[];
   activeStrategy: ActiveStrategy;
   reboundPrice: number;
@@ -70,7 +70,7 @@ export function AreaChart({
     ((price - config.reboundMin) / priceRange) * 100;
 
   const currentCostY =
-    currentStats.totalPosition > 0
+    currentStats.filledPosition > 0
       ? Math.round(priceToY(currentStats.avgCost) * 10000) / 10000
       : 0;
 
@@ -81,7 +81,7 @@ export function AreaChart({
       label: s.label,
       profit: s.profit,
     })),
-    ...(isValidCustom && customStats.totalPosition > 0
+    ...(isValidCustom && customStats.filledPosition > 0
       ? [{ name: "custom", label: "自定义", profit: customStats.profit }]
       : []),
   ];
@@ -112,7 +112,7 @@ export function AreaChart({
             <span className="text-right">
               {formatUSD(config.reboundMin)}
             </span>
-            {currentStats.totalPosition > 0 && (
+            {currentStats.filledPosition > 0 && (
               <span
                 className="absolute right-2 text-emerald-400 font-medium"
                 style={{
@@ -144,7 +144,7 @@ export function AreaChart({
             />
 
             {/* Horizontal line at current cost level */}
-            {currentStats.totalPosition > 0 && (
+            {currentStats.filledPosition > 0 && (
               <div
                 className="absolute left-0 right-0 border-t border-dashed border-emerald-500/40"
                 style={{ bottom: `${currentCostY}%` }}
@@ -152,11 +152,11 @@ export function AreaChart({
             )}
 
             {/* Vertical line at current position level */}
-            {currentStats.totalPosition > 0 && (
+            {currentStats.filledPosition > 0 && (
               <div
                 className="absolute top-0 bottom-0 border-l border-dashed border-emerald-500/40"
                 style={{
-                  left: `${Math.round((currentStats.totalPosition / maxPos) * 100 * 10000) / 10000}%`,
+                  left: `${Math.round((currentStats.filledPosition / maxPos) * 100 * 10000) / 10000}%`,
                 }}
               />
             )}
@@ -165,9 +165,9 @@ export function AreaChart({
             {allStats
               .filter((s) => {
                 if (s.name === "custom") {
-                  return isValidCustom && s.totalPosition > 0;
+                  return isValidCustom && s.filledPosition > 0;
                 }
-                return s.totalPosition > 0;
+                return s.filledPosition > 0;
               })
               .sort((a, b) => {
                 if (a.name === currentStrategyName) return 1;
@@ -181,7 +181,7 @@ export function AreaChart({
                   Math.round((100 - costY) * 10000) / 10000;
                 const widthPercent =
                   Math.round(
-                    (s.totalPosition / maxPos) * 100 * 10000
+                    (s.filledPosition / maxPos) * 100 * 10000
                   ) / 10000;
                 const isCurrent = s.name === currentStrategyName;
 
@@ -202,7 +202,7 @@ export function AreaChart({
                       zIndex: isCurrent ? 30 : 10,
                     }}
                   >
-                    {isCurrent && s.totalPosition > 0 && (
+                    {isCurrent && s.filledPosition > 0 && (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-[11px] text-emerald-300/70 text-center leading-relaxed">
                           <div className="font-medium">
@@ -211,7 +211,7 @@ export function AreaChart({
                           <div className="text-[10px] text-emerald-300/50">
                             = ({formatUSD(config.targetPrice)} −{" "}
                             {formatUSD(s.avgCost)}) ×{" "}
-                            {s.totalPosition.toFixed(2)} {config.assetUnit}
+                            {s.filledPosition.toFixed(2)} {config.assetUnit}
                           </div>
                         </div>
                       </div>
@@ -235,16 +235,16 @@ export function AreaChart({
                 {maxPos} {config.assetUnit}
               </span>
             </div>
-            {currentStats.totalPosition > 0 && (
+            {currentStats.filledPosition > 0 && (
               <span
                 className="absolute text-emerald-400 font-medium"
                 style={{
-                  left: `${Math.round((currentStats.totalPosition / maxPos) * 100 * 10000) / 10000}%`,
+                  left: `${Math.round((currentStats.filledPosition / maxPos) * 100 * 10000) / 10000}%`,
                   transform: "translateX(-50%)",
                   top: 0,
                 }}
               >
-                {currentStats.totalPosition.toFixed(2)} {config.assetUnit}
+                {currentStats.filledPosition.toFixed(2)} {config.assetUnit}
               </span>
             )}
           </div>
