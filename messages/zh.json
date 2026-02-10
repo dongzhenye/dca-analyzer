@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "title": "建仓模拟器",
+    "description": "模拟不同建仓策略，找到最优抄底方案"
+  },
+  "common": {
+    "collapse": "收起",
+    "settings": "设置",
+    "reset": "重置",
+    "custom": "自定义"
+  },
+  "config": {
+    "title": "配置",
+    "assetName": "资产名称",
+    "unit": "单位",
+    "totalSize": "最大仓位 ({unit})",
+    "targetPrice": "目标价格 (ATH)",
+    "targetDate": "目标日期（可选）",
+    "priceLevels": "建仓价格档位 (留空 = 不启用)",
+    "priceLevelsHint": "每个档位的仓位比例由策略决定，总和 = 最大仓位",
+    "empty": "留空",
+    "bottomRange": "反弹模拟范围",
+    "recommended": "推荐值",
+    "minPrice": "最低价",
+    "maxPrice": "最高价",
+    "step": "步长",
+    "warning": "配置警告"
+  },
+  "strategy": {
+    "title": "建仓策略",
+    "pyramid": {
+      "name": "金字塔",
+      "tooltip": "越跌越买，低位重仓"
+    },
+    "uniform": {
+      "name": "均匀",
+      "tooltip": "均匀分配，平均成本"
+    },
+    "inverted": {
+      "name": "倒金字塔",
+      "tooltip": "高位重仓，确保参与"
+    },
+    "custom": {
+      "name": "自定义",
+      "tooltip": "自由调整每个价位的仓位比例"
+    },
+    "totalWeight": "总仓位: {pct}%"
+  },
+  "slider": {
+    "title": "反弹价格",
+    "keyboardHint": "键盘左右微调"
+  },
+  "chart": {
+    "profitComparison": "收益对比",
+    "areaView": "面积对比",
+    "curveView": "收益曲线",
+    "priceAxis": "价格 (USD)",
+    "positionAxis": "仓位 ({unit})",
+    "profitAxis": "盈利额 (USD)",
+    "bottomAxis": "反弹价格 (USD)",
+    "profit": "盈利额 {amount}",
+    "profitFormula": "= ({target} − {cost}) × {position} {unit}"
+  },
+  "advice": {
+    "title": "策略建议",
+    "recommended": "推荐策略",
+    "coverage": "覆盖 {pct}% 价格区间",
+    "noProfit": "当反弹价格 {range} 时，所有方案都无收益",
+    "bestIn": "当反弹价格在 {range} 时，{strategy} 收益最高"
+  },
+  "validation": {
+    "needLevel": "至少需要一个有效的建仓价格档位",
+    "targetTooLow": "目标价 ({target}) 应高于最高建仓价 ({level})",
+    "bottomTooHigh": "反弹最高价 ({bottom}) 应不低于最低建仓价 ({level})",
+    "minAboveMax": "反弹最低价应小于最高价"
+  }
+}

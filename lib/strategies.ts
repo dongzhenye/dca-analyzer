@@ -37,12 +37,3 @@ export const STRATEGY_ORDER: PresetStrategy[] = [
   "uniform",
   "inverted",
 ];
-
-export const STRATEGY_LABELS: Record<
-  PresetStrategy,
-  { name: string; tooltip: string }
-> = {
-  pyramid: { name: "金字塔", tooltip: "越跌越买，低位重仓" },
-  uniform: { name: "均匀", tooltip: "均匀分配，平均成本" },
-  inverted: { name: "倒金字塔", tooltip: "高位重仓，确保参与" },
-};

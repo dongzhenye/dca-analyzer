@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import type { SimulatorConfig } from "@/lib/types";
 import { formatUSD, sortPriceLevels } from "@/lib/formatting";
 
@@ -14,15 +15,19 @@ export function ConfigPanel({
   onResetCustomAllocations,
   onResetToDefault,
 }: ConfigPanelProps) {
+  const t = useTranslations("config");
+  const tv = useTranslations("validation");
+  const tc = useTranslations("common");
+
   return (
     <div className="bg-zinc-900 rounded-xl p-6 mb-6 border border-zinc-700">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">配置</h2>
+        <h2 className="text-lg font-semibold">{t("title")}</h2>
         <button
           onClick={onResetToDefault}
           className="text-xs px-2 py-1 bg-zinc-800 text-zinc-400 hover:bg-zinc-700 rounded transition-colors"
         >
-          恢复默认
+          {tc("reset")}
         </button>
       </div>
 
@@ -30,7 +35,7 @@ export function ConfigPanel({
         {/* Section 1: Asset & Position */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="text-xs text-zinc-500">资产名称</label>
+            <label className="text-xs text-zinc-500">{t("assetName")}</label>
             <input
               type="text"
               value={config.assetName}
@@ -41,7 +46,7 @@ export function ConfigPanel({
             />
           </div>
           <div>
-            <label className="text-xs text-zinc-500">单位</label>
+            <label className="text-xs text-zinc-500">{t("unit")}</label>
             <input
               type="text"
               value={config.assetUnit}
@@ -53,7 +58,7 @@ export function ConfigPanel({
           </div>
           <div>
             <label className="text-xs text-zinc-500">
-              最大仓位 ({config.assetUnit})
+              {t("totalSize", { unit: config.assetUnit })}
             </label>
             <input
               type="number"
@@ -78,7 +83,7 @@ export function ConfigPanel({
         {/* Section 2: Target Price */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs text-zinc-500">目标价格 (ATH)</label>
+            <label className="text-xs text-zinc-500">{t("targetPrice")}</label>
             <input
               type="number"
               value={config.targetPrice || ""}
@@ -97,7 +102,7 @@ export function ConfigPanel({
             />
           </div>
           <div>
-            <label className="text-xs text-zinc-500">目标日期</label>
+            <label className="text-xs text-zinc-500">{t("targetDate")}</label>
             <input
               type="date"
               value={config.targetDate}
@@ -112,7 +117,7 @@ export function ConfigPanel({
         {/* Section 3: Price Levels */}
         <div>
           <label className="text-xs text-zinc-500 block mb-2">
-            建仓价格档位 (留空 = 不启用)
+            {t("priceLevels")}
           </label>
           <div className="flex flex-wrap gap-2">
             {config.priceLevels.map((price, i) => (
@@ -120,7 +125,7 @@ export function ConfigPanel({
                 key={i}
                 type="number"
                 value={price || ""}
-                placeholder="留空"
+                placeholder={t("empty")}
                 onChange={(e) => {
                   const newLevels = [...config.priceLevels];
                   newLevels[i] = Number(e.target.value) || 0;
@@ -150,14 +155,14 @@ export function ConfigPanel({
             ))}
           </div>
           <p className="text-xs text-zinc-600 mt-1">
-            每个档位的仓位比例由策略决定，总和 = 最大仓位
+            {t("priceLevelsHint")}
           </p>
         </div>
 
         {/* Section 4: Bottom Price Simulation Range */}
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs text-zinc-500">反弹模拟范围</label>
+            <label className="text-xs text-zinc-500">{t("bottomRange")}</label>
             <button
               onClick={() => {
                 const activeLevels = config.priceLevels.filter((p) => p > 0);
@@ -197,12 +202,12 @@ export function ConfigPanel({
               }}
               className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors"
             >
-              [推荐值]
+              [{t("recommended")}]
             </button>
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="text-xs text-zinc-600">最低价</label>
+              <label className="text-xs text-zinc-600">{t("minPrice")}</label>
               <input
                 type="number"
                 value={config.bottomMin || ""}
@@ -221,7 +226,7 @@ export function ConfigPanel({
               />
             </div>
             <div>
-              <label className="text-xs text-zinc-600">最高价</label>
+              <label className="text-xs text-zinc-600">{t("maxPrice")}</label>
               <input
                 type="number"
                 value={config.bottomMax || ""}
@@ -240,7 +245,7 @@ export function ConfigPanel({
               />
             </div>
             <div>
-              <label className="text-xs text-zinc-600">步长</label>
+              <label className="text-xs text-zinc-600">{t("step")}</label>
               <input
                 type="number"
                 value={config.bottomStep || ""}
@@ -267,24 +272,24 @@ export function ConfigPanel({
           const activeLevels = config.priceLevels.filter((p) => p > 0);
 
           if (activeLevels.length === 0) {
-            warnings.push("至少需要一个有效的建仓价格档位");
+            warnings.push(tv("needLevel"));
           } else {
             const maxLevel = Math.max(...activeLevels);
             const minLevel = Math.min(...activeLevels);
 
             if (config.targetPrice <= maxLevel) {
               warnings.push(
-                `目标价 (${formatUSD(config.targetPrice)}) 应高于最高建仓价 (${formatUSD(maxLevel)})`
+                tv("targetTooLow", { target: formatUSD(config.targetPrice), level: formatUSD(maxLevel) })
               );
             }
             if (config.bottomMax < minLevel) {
               warnings.push(
-                `反弹最高价 (${formatUSD(config.bottomMax)}) 应不低于最低建仓价 (${formatUSD(minLevel)})`
+                tv("bottomTooHigh", { bottom: formatUSD(config.bottomMax), level: formatUSD(minLevel) })
               );
             }
           }
           if (config.bottomMin >= config.bottomMax) {
-            warnings.push("反弹最低价应小于最高价");
+            warnings.push(tv("minAboveMax"));
           }
 
           if (warnings.length === 0) return null;
@@ -292,7 +297,7 @@ export function ConfigPanel({
           return (
             <div className="mt-4 p-3 bg-amber-900/20 border border-amber-700/50 rounded-lg">
               <div className="text-xs text-amber-400 font-medium mb-1">
-                配置警告
+                {t("warning")}
               </div>
               <ul className="text-xs text-amber-300/80 space-y-1">
                 {warnings.map((w, i) => (

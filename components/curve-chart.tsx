@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useTranslations } from "next-intl";
 import type {
   SimulatorConfig,
   ProfitCurve,
@@ -32,6 +33,7 @@ export function CurveChart({
   onSelectPreset,
   onSelectCustom,
 }: CurveChartProps) {
+  const t = useTranslations("chart");
   const isDraggingRef = useRef(false);
 
   const currentStrategyName = activeStrategy;
@@ -83,7 +85,7 @@ export function CurveChart({
   // Get profit at current bottom price for each strategy
   const currentProfits = visibleCurves.map((c) => {
     const point = c.points.find((p) => p.x === bottomPrice);
-    return { name: c.name, label: c.label, profit: point?.y ?? 0 };
+    return { name: c.name, profit: point?.y ?? 0 };
   });
 
   // Drag handlers
@@ -123,7 +125,7 @@ export function CurveChart({
             style={{ width: "14px" }}
           >
             <span className="text-[10px] text-zinc-500 -rotate-90 whitespace-nowrap">
-              盈利额 (USD)
+              {t("profitAxis")}
             </span>
           </div>
           {/* Y-axis labels */}
@@ -311,7 +313,7 @@ export function CurveChart({
           <div style={{ minWidth: "74px" }} />
           <div className="flex-1 text-right pr-1 mt-0.5">
             <span className="text-[10px] text-zinc-500 tracking-wider">
-              反弹价格 (USD)
+              {t("bottomAxis")}
             </span>
           </div>
         </div>

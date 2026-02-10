@@ -13,7 +13,6 @@ import {
   generatePresetWeights,
   generateExponentialWeights,
   STRATEGY_ORDER,
-  STRATEGY_LABELS,
 } from "@/lib/strategies";
 import { calculatePositionStats } from "@/lib/calculations";
 import { analyzeStrategyAdvice } from "@/lib/advice";
@@ -162,7 +161,6 @@ export function useSimulator() {
       }));
       return {
         name: strategy,
-        label: STRATEGY_LABELS[strategy].name,
         ...calculatePositionStats(
           strategyLevels,
           bottomPrice,
@@ -198,10 +196,6 @@ export function useSimulator() {
 
       return {
         name: strategyName,
-        label:
-          strategyName === "custom"
-            ? "自定义"
-            : STRATEGY_LABELS[strategyName].name,
         points: prices.map((bottomP) => ({
           x: bottomP,
           y: calculatePositionStats(
@@ -228,7 +222,6 @@ export function useSimulator() {
   const comparableStrategies = useMemo((): ComparableStrategy[] => {
     const list: ComparableStrategy[] = STRATEGY_ORDER.map((name) => ({
       name,
-      label: STRATEGY_LABELS[name].name,
       allocations: activePriceLevels.map((price, i) => ({
         price,
         weight: strategies[name][i] ?? 0,
@@ -237,7 +230,6 @@ export function useSimulator() {
     if (isCustomWeightValid) {
       list.push({
         name: "custom",
-        label: "自定义",
         allocations: customAllocations.filter((l) => l.price > 0),
       });
     }
