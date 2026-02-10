@@ -11,7 +11,7 @@ interface ChartLegendProps {
   items: LegendItem[];
   activeStrategy: ActiveStrategy;
   profitRankings: Map<string, number>;
-  isValidCustom: boolean;
+  isCustomWeightValid: boolean;
   onSelectPreset: (name: PresetStrategy) => void;
   onSelectCustom: () => void;
 }
@@ -20,7 +20,7 @@ export function ChartLegend({
   items,
   activeStrategy,
   profitRankings,
-  isValidCustom,
+  isCustomWeightValid,
   onSelectPreset,
   onSelectCustom,
 }: ChartLegendProps) {
@@ -54,7 +54,7 @@ export function ChartLegend({
       {/* Custom strategy in legend */}
       {(() => {
         const customItem = items.find((p) => p.name === "custom");
-        if (!customItem || !isValidCustom) return null;
+        if (!customItem || !isCustomWeightValid) return null;
         const isCurrent = activeStrategy === "custom";
         const rank = profitRankings.get("custom") ?? 0;
         return (

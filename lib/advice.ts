@@ -1,7 +1,7 @@
 // Strategy advice algorithm — see docs/strategy-advice-algorithm.md for detailed explanation.
 
 import type { ComparableStrategy, StrategyAdvice } from "./types";
-import { calculateStats } from "./calculations";
+import { calculatePositionStats } from "./calculations";
 import { formatUSD } from "./formatting";
 
 export function analyzeStrategyAdvice(
@@ -9,9 +9,9 @@ export function analyzeStrategyAdvice(
   priceLevels: number[],
   targetPrice: number,
   totalSize: number,
-  reboundMin: number,
-  reboundMax: number,
-  reboundStep: number
+  bottomMin: number,
+  bottomMax: number,
+  bottomStep: number
 ): StrategyAdvice | null {
   if (strategies.length === 0) return null;
 
@@ -42,7 +42,7 @@ export function analyzeStrategyAdvice(
     const profits = strategies.map((s) => ({
       name: s.name,
       label: s.label,
-      profit: calculateStats(s.levels, testPrice, targetPrice, totalSize)
+      profit: calculatePositionStats(s.allocations, testPrice, targetPrice, totalSize)
         .profit,
     }));
 
@@ -117,16 +117,16 @@ export function analyzeStrategyAdvice(
       const lowIdx = activeLevels.indexOf(seg.lowPrice);
       const isLastLevel = lowIdx === activeLevels.length - 1;
       const lowerBound = isLastLevel
-        ? reboundMin
-        : activeLevels[lowIdx + 1] + reboundStep;
-      const clampedHigh = Math.min(seg.highPrice, reboundMax);
-      const clampedLow = Math.max(lowerBound, reboundMin);
+        ? bottomMin
+        : activeLevels[lowIdx + 1] + bottomStep;
+      const clampedHigh = Math.min(seg.highPrice, bottomMax);
+      const clampedLow = Math.max(lowerBound, bottomMin);
       bestCoverage += Math.max(
         0,
-        (clampedHigh - clampedLow) / reboundStep + 1
+        (clampedHigh - clampedLow) / bottomStep + 1
       );
     }
-    const totalSteps = (reboundMax - reboundMin) / reboundStep + 1;
+    const totalSteps = (bottomMax - bottomMin) / bottomStep + 1;
     coveragePct = Math.round((bestCoverage / totalSteps) * 100);
   }
 

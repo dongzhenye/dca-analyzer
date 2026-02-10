@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSimulator } from "@/hooks/use-simulator";
 import { ConfigPanel } from "@/components/config-panel";
 import { StrategySelector } from "@/components/strategy-selector";
-import { ReboundSlider } from "@/components/rebound-slider";
+import { BottomSlider } from "@/components/bottom-slider";
 import { AreaChart } from "@/components/area-chart";
 import { CurveChart } from "@/components/curve-chart";
 import { AdvicePanel } from "@/components/advice-panel";
@@ -96,9 +96,9 @@ export default function Home() {
         <StrategySelector
           activeStrategy={sim.activeStrategy}
           activeAllocations={sim.activeAllocations}
-          reboundPrice={sim.reboundPrice}
+          bottomPrice={sim.bottomPrice}
           isCustomActive={sim.isCustomActive}
-          totalWeight={sim.totalWeight}
+          activeWeightSum={sim.activeWeightSum}
           onSelectPreset={sim.selectPreset}
           onSelectCustom={sim.selectCustom}
           onUpdateCustomWeight={sim.updateCustomWeight}
@@ -106,11 +106,11 @@ export default function Home() {
           config={sim.config}
         />
 
-        {/* Rebound */}
-        <ReboundSlider
+        {/* Bottom Price */}
+        <BottomSlider
           config={sim.config}
-          reboundPrice={sim.reboundPrice}
-          onReboundChange={sim.setReboundPrice}
+          bottomPrice={sim.bottomPrice}
+          onBottomChange={sim.setBottomPrice}
         />
 
         {/* Charts */}
@@ -139,8 +139,8 @@ export default function Home() {
               presetStats={sim.presetStats}
               customAllocations={sim.customAllocations}
               activeStrategy={sim.activeStrategy}
-              reboundPrice={sim.reboundPrice}
-              isValidCustom={sim.isValidCustom}
+              bottomPrice={sim.bottomPrice}
+              isCustomWeightValid={sim.isCustomWeightValid}
               profitRankings={sim.profitRankings}
               onSelectPreset={sim.selectPreset}
               onSelectCustom={sim.selectCustom}
@@ -150,10 +150,10 @@ export default function Home() {
               config={sim.config}
               profitCurves={sim.profitCurves}
               activeStrategy={sim.activeStrategy}
-              reboundPrice={sim.reboundPrice}
-              isValidCustom={sim.isValidCustom}
+              bottomPrice={sim.bottomPrice}
+              isCustomWeightValid={sim.isCustomWeightValid}
               profitRankings={sim.profitRankings}
-              onReboundChange={sim.setReboundPrice}
+              onBottomChange={sim.setBottomPrice}
               onSelectPreset={sim.selectPreset}
               onSelectCustom={sim.selectCustom}
             />

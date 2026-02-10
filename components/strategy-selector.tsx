@@ -11,9 +11,9 @@ import { STRATEGY_ORDER, STRATEGY_LABELS } from "@/lib/strategies";
 interface StrategySelectorProps {
   activeStrategy: ActiveStrategy;
   activeAllocations: Allocation[];
-  reboundPrice: number;
+  bottomPrice: number;
   isCustomActive: boolean;
-  totalWeight: number;
+  activeWeightSum: number;
   onSelectPreset: (strategy: PresetStrategy) => void;
   onSelectCustom: () => void;
   onUpdateCustomWeight: (index: number, weight: number) => void;
@@ -24,9 +24,9 @@ interface StrategySelectorProps {
 export function StrategySelector({
   activeStrategy,
   activeAllocations,
-  reboundPrice,
+  bottomPrice,
   isCustomActive,
-  totalWeight,
+  activeWeightSum,
   onSelectPreset,
   onSelectCustom,
   onUpdateCustomWeight,
@@ -73,7 +73,7 @@ export function StrategySelector({
       {/* Histogram with optional sliders */}
       <div className="space-y-2">
         {activeAllocations.map((level, index) => {
-          const isFilled = level.price >= reboundPrice;
+          const isFilled = level.price >= bottomPrice;
           const barWidth = Math.min(
             (level.weight / CONSTANTS.HISTOGRAM_SCALE_MAX) * 100,
             100
@@ -151,9 +151,9 @@ export function StrategySelector({
           重置自定义
         </button>
         <span
-          className={`text-sm ${Math.abs(totalWeight - 1) < CONSTANTS.ALLOCATION_TOLERANCE ? "text-emerald-400" : "text-amber-400"}`}
+          className={`text-sm ${Math.abs(activeWeightSum - 1) < CONSTANTS.ALLOCATION_TOLERANCE ? "text-emerald-400" : "text-amber-400"}`}
         >
-          总仓位: {(totalWeight * 100).toFixed(0)}%
+          总仓位: {(activeWeightSum * 100).toFixed(0)}%
         </span>
       </div>
     </div>

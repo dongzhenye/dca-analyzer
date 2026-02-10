@@ -11,17 +11,17 @@ lib/
   formatting.ts     — display formatting (USD, price sorting)
   strategies.ts     — preset strategy weight generation, labels
   calculations.ts   — core math: filled levels → stats (cost, profit, return)
-  advice.ts         — strategy comparison across rebound range → recommendation
+  advice.ts         — strategy comparison across bottom price range → recommendation
 
 hooks/
   use-simulator.ts  — all state + derived data, single hook consumed by page
 
 components/
-  config-panel.tsx      — collapsible settings: price levels, rebound range, reset
+  config-panel.tsx      — collapsible settings: price levels, bottom price range, reset
   strategy-selector.tsx — preset buttons + custom sliders + weight total
-  rebound-slider.tsx    — draggable rebound price selector
-  area-chart.tsx        — SVG bar chart comparing strategies at current rebound
-  curve-chart.tsx       — SVG line chart showing profit across rebound range
+  bottom-slider.tsx     — draggable bottom price selector
+  area-chart.tsx        — SVG bar chart comparing strategies at current bottom price
+  curve-chart.tsx       — SVG line chart showing profit across bottom price range
   chart-legend.tsx      — shared legend with rankings, click-to-switch (used by both charts)
   advice-panel.tsx      — strategy recommendation display with segment breakdown
 
@@ -38,7 +38,7 @@ All state lives in `useSimulator()`. The app has a single page with a single sta
 Components receive flat props rather than a single `sim` object. This makes each component's dependencies explicit in its interface, enables React's memoization to work correctly, and keeps components testable in isolation.
 
 ### Calculation Architecture
-`calculations.ts` is a pure function: `(allocations, reboundPrice, targetPrice, totalSize) → StrategyStats`. No side effects, no state. This is the core "engine" — everything else (advice, curves, rankings) calls it.
+`calculations.ts` is a pure function: `(allocations, bottomPrice, targetPrice, totalSize) → PositionMetrics`. No side effects, no state. This is the core "engine" — everything else (advice, curves, rankings) calls it.
 
 ### Advice Decoupled from Curves
 `analyzeStrategyAdvice()` computes its own data by testing at price-level boundaries rather than depending on `profitCurves`. This avoids a false dependency chain and lets advice update independently.
@@ -57,7 +57,7 @@ Renamed during refactoring for clarity and consistency:
 | `maxPosition` | `totalSize` | "Position" overloaded; "size" is clearer |
 | `PriceLevel` | `Allocation` | Describes what it is: a weight at a price |
 | `PriceLevel.position` | `Allocation.weight` | Normalized 0–1 weight, not absolute position |
-| `Stats` | `StrategyStats` | Disambiguate from generic stats |
+| `Stats` → `StrategyStats` | `PositionMetrics` | What's measured: position metrics at a price point |
 | `StrategyName` | `PresetStrategy` | Only presets, not custom |
 | `linear` (strategy) | `uniform` | Mathematically accurate — equal allocation |
 | `线性` (UI label) | `均匀` | Chinese equivalent of "uniform" |
@@ -65,9 +65,20 @@ Renamed during refactoring for clarity and consistency:
 | `customLevels` | `customAllocations` | Consistent with `Allocation` type |
 | `allStrategyStats` | `presetStats` | Only contains preset strategy stats |
 | `insight` | `strategyAdvice` | "Advice" matches the algorithm's output |
-| `curveData` | `profitCurves` | Descriptive — profit curves over rebound range |
-| `totalAllocation` | `totalWeight` | Weights sum to 1.0, not "allocations" |
+| `curveData` | `profitCurves` | Descriptive — profit curves over bottom range |
+| `totalAllocation` → `totalWeight` | `activeWeightSum` | Sum of active strategy weights |
 | `generateAggressiveInverted` | `generateExponentialWeights` | Describes the math, not the trading sentiment |
+| `generateStrategies` | `generatePresetWeights` | Generates preset weight arrays, not strategy objects |
+| `calculateStats` | `calculatePositionStats` | Explicit: calculates position-level stats |
+| `totalPosition` | `filledPosition` | Only filled (executed) orders, not total |
+| `returnRate` | `roi` | Industry-standard abbreviation |
+| `ComparableStrategy.levels` | `.allocations` | Consistent with `Allocation` type |
+| `customTotal` | `customWeightSum` | Sum of custom weights |
+| `isValidCustom` | `isCustomWeightValid` | Subject-first naming: what is being validated |
+| `reboundPrice` | `bottomPrice` | The lowest price the asset reaches |
+| `reboundMin/Max/Step` | `bottomMin/Max/Step` | Consistent with `bottomPrice` |
+| `ReboundSlider` | `BottomSlider` | Component matches domain concept |
+| `onReboundChange` | `onBottomChange` | Callback matches domain concept |
 | `HISTOGRAM_MAX_POSITION` | `HISTOGRAM_SCALE_MAX` | Scale factor, not a position |
 | `SLIDER_MAX_POSITION` | `MAX_LEVEL_WEIGHT` | Maximum allowed weight per level |
 | `PRECISION_MULTIPLIER` | _(deleted)_ | Dead code |

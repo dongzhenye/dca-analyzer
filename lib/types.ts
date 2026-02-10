@@ -1,4 +1,4 @@
-// Types for the position simulator
+// Types for the dca analyzer
 
 export interface SimulatorConfig {
   assetName: string;
@@ -7,9 +7,9 @@ export interface SimulatorConfig {
   targetDate: string;
   priceLevels: number[];
   totalSize: number;
-  reboundMin: number;
-  reboundMax: number;
-  reboundStep: number;
+  bottomMin: number;
+  bottomMax: number;
+  bottomStep: number;
 }
 
 export interface Allocation {
@@ -17,13 +17,13 @@ export interface Allocation {
   weight: number;
 }
 
-export interface StrategyStats {
-  totalPosition: number;
+export interface PositionMetrics {
+  filledPosition: number;
   totalCost: number;
   avgCost: number;
   valueAtTarget: number;
   profit: number;
-  returnRate: number;
+  roi: number;
 }
 
 export type PresetStrategy = "pyramid" | "uniform" | "inverted";
@@ -33,7 +33,7 @@ export type ActiveStrategy = PresetStrategy | "custom";
 export interface ComparableStrategy {
   name: string;
   label: string;
-  levels: Allocation[];
+  allocations: Allocation[];
 }
 
 export interface ProfitCurvePoint {

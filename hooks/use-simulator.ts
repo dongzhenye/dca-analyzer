@@ -10,12 +10,12 @@ import type {
 } from "@/lib/types";
 import { CONSTANTS, DEFAULT_CONFIG } from "@/lib/constants";
 import {
-  generateStrategies,
+  generatePresetWeights,
   generateExponentialWeights,
   STRATEGY_ORDER,
   STRATEGY_LABELS,
 } from "@/lib/strategies";
-import { calculateStats } from "@/lib/calculations";
+import { calculatePositionStats } from "@/lib/calculations";
 import { analyzeStrategyAdvice } from "@/lib/advice";
 
 export function useSimulator() {
@@ -29,7 +29,7 @@ export function useSimulator() {
 
   // Derived strategies based on active levels count
   const strategies = useMemo(
-    () => generateStrategies(activePriceLevels.length || 1),
+    () => generatePresetWeights(activePriceLevels.length || 1),
     [activePriceLevels.length]
   );
 
@@ -75,39 +75,39 @@ export function useSimulator() {
     activePriceLevels,
   ]);
 
-  const [reboundPrice, setReboundPrice] = useState(() => {
-    const { reboundMin, reboundMax, reboundStep } = DEFAULT_CONFIG;
-    const middle = (reboundMin + reboundMax) / 2;
+  const [bottomPrice, setBottomPrice] = useState(() => {
+    const { bottomMin, bottomMax, bottomStep } = DEFAULT_CONFIG;
+    const middle = (bottomMin + bottomMax) / 2;
     return (
-      Math.round((middle - reboundMin) / reboundStep) * reboundStep +
-      reboundMin
+      Math.round((middle - bottomMin) / bottomStep) * bottomStep +
+      bottomMin
     );
   });
 
-  // Auto-adjust reboundPrice when rebound range changes
+  // Auto-adjust bottomPrice when bottom range changes
   useEffect(() => {
-    const { reboundMin, reboundMax, reboundStep } = config;
-    if (reboundMin >= reboundMax || reboundStep <= 0) return;
+    const { bottomMin, bottomMax, bottomStep } = config;
+    if (bottomMin >= bottomMax || bottomStep <= 0) return;
 
-    const middle = (reboundMin + reboundMax) / 2;
+    const middle = (bottomMin + bottomMax) / 2;
     const alignedMiddle =
-      Math.round((middle - reboundMin) / reboundStep) * reboundStep +
-      reboundMin;
+      Math.round((middle - bottomMin) / bottomStep) * bottomStep +
+      bottomMin;
     const clampedMiddle = Math.max(
-      reboundMin,
-      Math.min(reboundMax, alignedMiddle)
+      bottomMin,
+      Math.min(bottomMax, alignedMiddle)
     );
 
-    setReboundPrice((currentPrice) => {
+    setBottomPrice((currentPrice) => {
       const alignedPrice =
-        Math.round((currentPrice - reboundMin) / reboundStep) * reboundStep +
-        reboundMin;
+        Math.round((currentPrice - bottomMin) / bottomStep) * bottomStep +
+        bottomMin;
       const clampedPrice = Math.max(
-        reboundMin,
-        Math.min(reboundMax, alignedPrice)
+        bottomMin,
+        Math.min(bottomMax, alignedPrice)
       );
 
-      if (currentPrice < reboundMin || currentPrice > reboundMax) {
+      if (currentPrice < bottomMin || currentPrice > bottomMax) {
         return clampedMiddle;
       }
       if (clampedPrice !== currentPrice) {
@@ -115,9 +115,9 @@ export function useSimulator() {
       }
       return currentPrice;
     });
-  }, [config.reboundMin, config.reboundMax, config.reboundStep]);
+  }, [config.bottomMin, config.bottomMax, config.bottomStep]);
 
-  // Keyboard arrow keys to adjust rebound price
+  // Keyboard arrow keys to adjust bottom price
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -125,17 +125,17 @@ export function useSimulator() {
 
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
         e.preventDefault();
-        setReboundPrice((prev) => {
+        setBottomPrice((prev) => {
           const delta =
-            e.key === "ArrowRight" ? config.reboundStep : -config.reboundStep;
+            e.key === "ArrowRight" ? config.bottomStep : -config.bottomStep;
           const next = prev + delta;
-          return Math.max(config.reboundMin, Math.min(config.reboundMax, next));
+          return Math.max(config.bottomMin, Math.min(config.bottomMax, next));
         });
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [config.reboundStep, config.reboundMin, config.reboundMax]);
+  }, [config.bottomStep, config.bottomMin, config.bottomMax]);
 
   // Reset custom allocations when config price levels change
   const resetCustomAllocations = (newConfig: SimulatorConfig) => {
@@ -163,23 +163,23 @@ export function useSimulator() {
       return {
         name: strategy,
         label: STRATEGY_LABELS[strategy].name,
-        ...calculateStats(
+        ...calculatePositionStats(
           strategyLevels,
-          reboundPrice,
+          bottomPrice,
           config.targetPrice,
           config.totalSize
         ),
       };
     });
-  }, [activePriceLevels, strategies, reboundPrice, config.targetPrice, config.totalSize]);
+  }, [activePriceLevels, strategies, bottomPrice, config.targetPrice, config.totalSize]);
 
-  // Profit curves: profit at each rebound price for each strategy
+  // Profit curves: profit at each bottom price for each strategy
   const profitCurves = useMemo((): ProfitCurve[] => {
     const prices: number[] = [];
     for (
-      let p = config.reboundMin;
-      p <= config.reboundMax;
-      p += config.reboundStep
+      let p = config.bottomMin;
+      p <= config.bottomMax;
+      p += config.bottomStep
     ) {
       prices.push(p);
     }
@@ -202,11 +202,11 @@ export function useSimulator() {
           strategyName === "custom"
             ? "自定义"
             : STRATEGY_LABELS[strategyName].name,
-        points: prices.map((reboundP) => ({
-          x: reboundP,
-          y: calculateStats(
+        points: prices.map((bottomP) => ({
+          x: bottomP,
+          y: calculatePositionStats(
             strategyLevels,
-            reboundP,
+            bottomP,
             config.targetPrice,
             config.totalSize
           ).profit,
@@ -216,39 +216,39 @@ export function useSimulator() {
   }, [config, strategies, customAllocations, activePriceLevels]);
 
   // Cache custom allocation total for reuse
-  const customTotal = useMemo(
+  const customWeightSum = useMemo(
     () => customAllocations.reduce((sum, l) => sum + l.weight, 0),
     [customAllocations]
   );
 
-  const isValidCustom =
-    Math.abs(customTotal - 1) < CONSTANTS.ALLOCATION_TOLERANCE;
+  const isCustomWeightValid =
+    Math.abs(customWeightSum - 1) < CONSTANTS.ALLOCATION_TOLERANCE;
 
   // Comparable strategies: presets always included, custom only when allocation sums to ~100%
   const comparableStrategies = useMemo((): ComparableStrategy[] => {
     const list: ComparableStrategy[] = STRATEGY_ORDER.map((name) => ({
       name,
       label: STRATEGY_LABELS[name].name,
-      levels: activePriceLevels.map((price, i) => ({
+      allocations: activePriceLevels.map((price, i) => ({
         price,
         weight: strategies[name][i] ?? 0,
       })),
     }));
-    if (isValidCustom) {
+    if (isCustomWeightValid) {
       list.push({
         name: "custom",
         label: "自定义",
-        levels: customAllocations.filter((l) => l.price > 0),
+        allocations: customAllocations.filter((l) => l.price > 0),
       });
     }
     return list;
-  }, [activePriceLevels, strategies, isValidCustom, customAllocations]);
+  }, [activePriceLevels, strategies, isCustomWeightValid, customAllocations]);
 
   // Calculate profit rankings for legend display
   const profitRankings = useMemo(() => {
-    const customStats = calculateStats(
+    const customStats = calculatePositionStats(
       customAllocations.filter((l) => l.price > 0),
-      reboundPrice,
+      bottomPrice,
       config.targetPrice,
       config.totalSize
     );
@@ -257,7 +257,7 @@ export function useSimulator() {
       ...presetStats.map((s) => ({ name: s.name, profit: s.profit })),
     ];
 
-    if (isValidCustom) {
+    if (isCustomWeightValid) {
       allProfits.push({ name: "custom", profit: customStats.profit });
     }
 
@@ -271,10 +271,10 @@ export function useSimulator() {
   }, [
     presetStats,
     customAllocations,
-    reboundPrice,
+    bottomPrice,
     config.targetPrice,
     config.totalSize,
-    isValidCustom,
+    isCustomWeightValid,
   ]);
 
   // Strategy advice
@@ -284,18 +284,18 @@ export function useSimulator() {
       config.priceLevels,
       config.targetPrice,
       config.totalSize,
-      config.reboundMin,
-      config.reboundMax,
-      config.reboundStep
+      config.bottomMin,
+      config.bottomMax,
+      config.bottomStep
     );
   }, [
     comparableStrategies,
     config.priceLevels,
     config.targetPrice,
     config.totalSize,
-    config.reboundMin,
-    config.reboundMax,
-    config.reboundStep,
+    config.bottomMin,
+    config.bottomMax,
+    config.bottomStep,
   ]);
 
   const selectPreset = (strategy: PresetStrategy) => {
@@ -320,7 +320,7 @@ export function useSimulator() {
     setIsCustomActive(false);
   };
 
-  const totalWeight = activeAllocations.reduce(
+  const activeWeightSum = activeAllocations.reduce(
     (sum, l) => sum + l.weight,
     0
   );
@@ -340,9 +340,9 @@ export function useSimulator() {
     customAllocations,
     updateCustomWeight,
     resetCustomAllocations,
-    // Rebound
-    reboundPrice,
-    setReboundPrice,
+    // Bottom price
+    bottomPrice,
+    setBottomPrice,
     // Derived data
     activePriceLevels,
     presetStats,
@@ -351,8 +351,8 @@ export function useSimulator() {
     profitRankings,
     strategyAdvice,
     // Computed flags
-    isValidCustom,
-    totalWeight,
-    customTotal,
+    isCustomWeightValid,
+    activeWeightSum,
+    customWeightSum,
   };
 }

@@ -16,7 +16,7 @@ export const DEFAULT_CONFIG: SimulatorConfig = {
   targetDate: "2025-10-06",
   priceLevels: [70000, 65000, 60000, 55000, 50000, 45000, 40000],
   totalSize: 1.0,
-  reboundMin: 35000,
-  reboundMax: 75000,
-  reboundStep: 1000,
+  bottomMin: 35000,
+  bottomMax: 75000,
+  bottomStep: 1000,
 };
