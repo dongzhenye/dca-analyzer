@@ -32,7 +32,6 @@ export type ActiveStrategy = PresetStrategy | "custom";
 
 export interface ComparableStrategy {
   name: string;
-  label: string;
   allocations: Allocation[];
 }
 
@@ -43,19 +42,19 @@ export interface ProfitCurvePoint {
 
 export interface ProfitCurve {
   name: string;
-  label: string;
   points: ProfitCurvePoint[];
 }
 
 export interface AdviceSegment {
-  range: string;
+  rangeHigh: number;
+  rangeLow: number;
+  isLast: boolean;
   winner: string;
-  label: string;
 }
 
 export interface StrategyAdvice {
-  zeroZoneLabel: string;
+  zeroZonePrice: number;
   segments: AdviceSegment[];
-  bestStrategy: { name: string; label: string; count: number } | null;
+  bestStrategy: { name: string; count: number } | null;
   coveragePct: number;
 }

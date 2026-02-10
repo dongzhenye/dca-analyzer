@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import type { SimulatorConfig } from "@/lib/types";
 import { formatUSD } from "@/lib/formatting";
 
@@ -12,10 +13,12 @@ export function BottomSlider({
   bottomPrice,
   onBottomChange,
 }: BottomSliderProps) {
+  const t = useTranslations("slider");
+
   return (
     <div className="bg-zinc-900 rounded-xl p-6 mb-6">
       <div className="flex justify-between items-center mb-4">
-        <span className="text-base font-medium text-zinc-300">反弹价格</span>
+        <span className="text-base font-medium text-zinc-300">{t("title")}</span>
         <div className="flex items-center gap-2">
           <button
             onClick={() =>
@@ -53,7 +56,7 @@ export function BottomSlider({
       />
       <div className="flex justify-between text-xs text-zinc-500 mt-2">
         <span>{formatUSD(config.bottomMin)}</span>
-        <span className="text-zinc-600">键盘左右微调</span>
+        <span className="text-zinc-600">{t("keyboardHint")}</span>
         <span>{formatUSD(config.bottomMax)}</span>
       </div>
     </div>

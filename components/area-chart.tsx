@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import type {
   SimulatorConfig,
   Allocation,
@@ -13,7 +14,7 @@ import { ChartLegend } from "./chart-legend";
 
 interface AreaChartProps {
   config: SimulatorConfig;
-  presetStats: (PositionMetrics & { name: string; label: string })[];
+  presetStats: (PositionMetrics & { name: string })[];
   customAllocations: Allocation[];
   activeStrategy: ActiveStrategy;
   bottomPrice: number;
@@ -34,6 +35,9 @@ export function AreaChart({
   onSelectPreset,
   onSelectCustom,
 }: AreaChartProps) {
+  const t = useTranslations("chart");
+  const ts = useTranslations("strategy");
+
   // Y-axis: price range from bottomMin to targetPrice
   const priceRange = config.targetPrice - config.bottomMin;
   const maxPos = config.totalSize;
@@ -55,14 +59,13 @@ export function AreaChart({
     ...presetStats,
     {
       name: "custom" as const,
-      label: "自定义",
       ...customStats,
     },
   ];
 
   const currentStats =
     currentStrategyName === "custom"
-      ? { name: "custom", label: "自定义", ...customStats }
+      ? { name: "custom", ...customStats }
       : presetStats.find((s) => s.name === currentStrategyName) ||
         presetStats[0];
 
@@ -78,11 +81,10 @@ export function AreaChart({
   const legendItems = [
     ...presetStats.map((s) => ({
       name: s.name,
-      label: s.label,
       profit: s.profit,
     })),
     ...(isCustomWeightValid && customStats.filledPosition > 0
-      ? [{ name: "custom", label: "自定义", profit: customStats.profit }]
+      ? [{ name: "custom", profit: customStats.profit }]
       : []),
   ];
 
@@ -98,7 +100,7 @@ export function AreaChart({
             style={{ width: "14px" }}
           >
             <span className="text-[10px] text-zinc-500 -rotate-90 whitespace-nowrap">
-              价格 (USD)
+              {t("priceAxis")}
             </span>
           </div>
           {/* Y-axis labels */}
@@ -206,12 +208,15 @@ export function AreaChart({
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-[11px] text-emerald-300/70 text-center leading-relaxed">
                           <div className="font-medium">
-                            盈利额 {formatUSD(s.profit)}
+                            {t("profit", { amount: formatUSD(s.profit) })}
                           </div>
                           <div className="text-[10px] text-emerald-300/50">
-                            = ({formatUSD(config.targetPrice)} −{" "}
-                            {formatUSD(s.avgCost)}) ×{" "}
-                            {s.filledPosition.toFixed(2)} {config.assetUnit}
+                            {t("profitFormula", {
+                              target: formatUSD(config.targetPrice),
+                              cost: formatUSD(s.avgCost),
+                              position: s.filledPosition.toFixed(2),
+                              unit: config.assetUnit,
+                            })}
                           </div>
                         </div>
                       </div>
@@ -254,7 +259,7 @@ export function AreaChart({
           <div style={{ minWidth: "74px" }} />
           <div className="flex-1 text-right pr-1 mt-0.5">
             <span className="text-[10px] text-zinc-500 tracking-wider">
-              仓位 ({config.assetUnit})
+              {t("positionAxis", { unit: config.assetUnit })}
             </span>
           </div>
         </div>

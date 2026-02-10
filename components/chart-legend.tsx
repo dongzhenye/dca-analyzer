@@ -1,9 +1,9 @@
+import { useTranslations } from "next-intl";
 import type { ActiveStrategy, PresetStrategy } from "@/lib/types";
 import { formatUSD } from "@/lib/formatting";
 
 interface LegendItem {
   name: string;
-  label: string;
   profit: number;
 }
 
@@ -24,6 +24,8 @@ export function ChartLegend({
   onSelectPreset,
   onSelectCustom,
 }: ChartLegendProps) {
+  const ts = useTranslations("strategy");
+
   return (
     <div className="flex justify-center items-end gap-8 mt-4">
       {items
@@ -40,7 +42,7 @@ export function ChartLegend({
               <div
                 className={`text-sm ${isCurrent ? "text-emerald-400" : "text-zinc-500"}`}
               >
-                {p.label}
+                {ts(`${p.name}.name`)}
                 <sup className="ml-0.5 opacity-60">{rank}</sup>
               </div>
               <div
@@ -65,7 +67,7 @@ export function ChartLegend({
             <div
               className={`text-sm ${isCurrent ? "text-emerald-400" : "text-zinc-500"}`}
             >
-              自定义
+              {ts("custom.name")}
               <sup className="ml-0.5 opacity-60">{rank}</sup>
             </div>
             <div

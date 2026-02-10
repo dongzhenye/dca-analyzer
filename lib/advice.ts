@@ -2,7 +2,6 @@
 
 import type { ComparableStrategy, StrategyAdvice } from "./types";
 import { calculatePositionStats } from "./calculations";
-import { formatUSD } from "./formatting";
 
 export function analyzeStrategyAdvice(
   strategies: ComparableStrategy[],
@@ -28,12 +27,11 @@ export function analyzeStrategyAdvice(
   const highestLevel = activeLevels[0];
 
   // Zone above highest level: no positions filled, no profit
-  const zeroZoneLabel = `> ${formatUSD(highestLevel)}`;
+  const zeroZonePrice = highestLevel;
 
   interface LevelResult {
     price: number;
     winner: string;
-    label: string;
   }
   const levelResults: LevelResult[] = [];
 
@@ -41,7 +39,6 @@ export function analyzeStrategyAdvice(
     const testPrice = activeLevels[i];
     const profits = strategies.map((s) => ({
       name: s.name,
-      label: s.label,
       profit: calculatePositionStats(s.allocations, testPrice, targetPrice, totalSize)
         .profit,
     }));
@@ -58,7 +55,6 @@ export function analyzeStrategyAdvice(
     levelResults.push({
       price: testPrice,
       winner: winner.name,
-      label: winner.label,
     });
   }
 
@@ -67,7 +63,6 @@ export function analyzeStrategyAdvice(
     highPrice: number;
     lowPrice: number;
     winner: string;
-    label: string;
   }
   const mergedSegments: MergedSegment[] = [];
 
@@ -80,31 +75,15 @@ export function analyzeStrategyAdvice(
         highPrice: lr.price,
         lowPrice: lr.price,
         winner: lr.winner,
-        label: lr.label,
       });
     }
   }
 
-  const formatSegment = (seg: MergedSegment, idx: number): string => {
-    const isLast = idx === mergedSegments.length - 1;
-    const upper = `≤ ${formatUSD(seg.highPrice)}`;
-    const lowIdx = activeLevels.indexOf(seg.lowPrice);
-    if (isLast || lowIdx === activeLevels.length - 1) {
-      return upper;
-    }
-    const lower = `> ${formatUSD(activeLevels[lowIdx + 1])}`;
-    return `${upper} 且 ${lower}`;
-  };
-
   // Find best strategy by coverage
-  let bestStrategy = { name: "", label: "", count: 0 };
+  let bestStrategy = { name: "", count: 0 };
   winCounts.forEach((count, name) => {
     if (count > bestStrategy.count) {
-      bestStrategy = {
-        name,
-        label: strategies.find((s) => s.name === name)?.label || name,
-        count,
-      };
+      bestStrategy = { name, count };
     }
   });
 
@@ -131,11 +110,12 @@ export function analyzeStrategyAdvice(
   }
 
   return {
-    zeroZoneLabel,
+    zeroZonePrice,
     segments: mergedSegments.map((s, i) => ({
-      range: formatSegment(s, i),
+      rangeHigh: s.highPrice,
+      rangeLow: s.lowPrice,
+      isLast: i === mergedSegments.length - 1,
       winner: s.winner,
-      label: s.label,
     })),
     bestStrategy: bestStrategy.name ? bestStrategy : null,
     coveragePct,

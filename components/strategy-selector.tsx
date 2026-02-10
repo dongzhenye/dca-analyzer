@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import type {
   Allocation,
   ActiveStrategy,
@@ -6,7 +7,7 @@ import type {
 } from "@/lib/types";
 import { CONSTANTS } from "@/lib/constants";
 import { formatUSD } from "@/lib/formatting";
-import { STRATEGY_ORDER, STRATEGY_LABELS } from "@/lib/strategies";
+import { STRATEGY_ORDER } from "@/lib/strategies";
 
 interface StrategySelectorProps {
   activeStrategy: ActiveStrategy;
@@ -33,39 +34,40 @@ export function StrategySelector({
   onResetCustomAllocations,
   config,
 }: StrategySelectorProps) {
+  const t = useTranslations("strategy");
+
   return (
     <div className="bg-zinc-900 rounded-xl p-6 mb-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-base font-medium text-zinc-300">建仓策略</h2>
+        <h2 className="text-base font-medium text-zinc-300">{t("title")}</h2>
         <div className="flex gap-2">
           {STRATEGY_ORDER.map((strategy) => {
             const isActive = activeStrategy === strategy;
-            const label = STRATEGY_LABELS[strategy];
             return (
               <button
                 key={strategy}
                 onClick={() => onSelectPreset(strategy)}
-                title={label.tooltip}
+                title={t(`${strategy}.tooltip`)}
                 className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                   isActive
                     ? "bg-emerald-600 text-white"
                     : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
                 }`}
               >
-                {label.name}
+                {t(`${strategy}.name`)}
               </button>
             );
           })}
           <button
             onClick={onSelectCustom}
-            title="自由调整每个价位的仓位比例"
+            title={t("custom.tooltip")}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
               isCustomActive
                 ? "bg-emerald-600 text-white"
                 : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
             }`}
           >
-            自定义
+            {t("custom.name")}
           </button>
         </div>
       </div>
@@ -148,12 +150,12 @@ export function StrategySelector({
           onClick={() => onResetCustomAllocations(config)}
           className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
         >
-          重置自定义
+          {t("resetCustom")}
         </button>
         <span
           className={`text-sm ${Math.abs(activeWeightSum - 1) < CONSTANTS.ALLOCATION_TOLERANCE ? "text-emerald-400" : "text-amber-400"}`}
         >
-          总仓位: {(activeWeightSum * 100).toFixed(0)}%
+          {t("totalWeight", { pct: (activeWeightSum * 100).toFixed(0) })}
         </span>
       </div>
     </div>
