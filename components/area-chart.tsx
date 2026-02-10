@@ -16,7 +16,7 @@ interface AreaChartProps {
   presetStats: (PositionMetrics & { name: string; label: string })[];
   customAllocations: Allocation[];
   activeStrategy: ActiveStrategy;
-  reboundPrice: number;
+  bottomPrice: number;
   isCustomWeightValid: boolean;
   profitRankings: Map<string, number>;
   onSelectPreset: (name: PresetStrategy) => void;
@@ -28,25 +28,25 @@ export function AreaChart({
   presetStats,
   customAllocations,
   activeStrategy,
-  reboundPrice,
+  bottomPrice,
   isCustomWeightValid,
   profitRankings,
   onSelectPreset,
   onSelectCustom,
 }: AreaChartProps) {
-  // Y-axis: price range from reboundMin to targetPrice
-  const priceRange = config.targetPrice - config.reboundMin;
+  // Y-axis: price range from bottomMin to targetPrice
+  const priceRange = config.targetPrice - config.bottomMin;
   const maxPos = config.totalSize;
 
   const customStats = useMemo(
     () =>
       calculatePositionStats(
         customAllocations.filter((l) => l.price > 0),
-        reboundPrice,
+        bottomPrice,
         config.targetPrice,
         config.totalSize
       ),
-    [customAllocations, reboundPrice, config.targetPrice, config.totalSize]
+    [customAllocations, bottomPrice, config.targetPrice, config.totalSize]
   );
 
   const currentStrategyName = activeStrategy;
@@ -67,7 +67,7 @@ export function AreaChart({
         presetStats[0];
 
   const priceToY = (price: number) =>
-    ((price - config.reboundMin) / priceRange) * 100;
+    ((price - config.bottomMin) / priceRange) * 100;
 
   const currentCostY =
     currentStats.filledPosition > 0
@@ -110,7 +110,7 @@ export function AreaChart({
               {formatUSD(config.targetPrice)}
             </span>
             <span className="text-right">
-              {formatUSD(config.reboundMin)}
+              {formatUSD(config.bottomMin)}
             </span>
             {currentStats.filledPosition > 0 && (
               <span

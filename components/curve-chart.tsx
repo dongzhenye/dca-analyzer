@@ -13,10 +13,10 @@ interface CurveChartProps {
   config: SimulatorConfig;
   profitCurves: ProfitCurve[];
   activeStrategy: ActiveStrategy;
-  reboundPrice: number;
+  bottomPrice: number;
   isCustomWeightValid: boolean;
   profitRankings: Map<string, number>;
-  onReboundChange: (price: number) => void;
+  onBottomChange: (price: number) => void;
   onSelectPreset: (name: PresetStrategy) => void;
   onSelectCustom: () => void;
 }
@@ -25,10 +25,10 @@ export function CurveChart({
   config,
   profitCurves,
   activeStrategy,
-  reboundPrice,
+  bottomPrice,
   isCustomWeightValid,
   profitRankings,
-  onReboundChange,
+  onBottomChange,
   onSelectPreset,
   onSelectCustom,
 }: CurveChartProps) {
@@ -54,8 +54,8 @@ export function CurveChart({
   const profitRange = maxProfit - minProfit || 1;
 
   // X-axis range
-  const xMin = config.reboundMin;
-  const xMax = config.reboundMax;
+  const xMin = config.bottomMin;
+  const xMax = config.bottomMax;
   const xRange = xMax - xMin;
 
   const chartWidth = CONSTANTS.CHART_WIDTH;
@@ -77,36 +77,36 @@ export function CurveChart({
       .join(" ");
   };
 
-  const reboundX = toSvgX(reboundPrice);
+  const bottomX = toSvgX(bottomPrice);
   const zeroY = toSvgY(0);
 
-  // Get profit at current rebound price for each strategy
+  // Get profit at current bottom price for each strategy
   const currentProfits = visibleCurves.map((c) => {
-    const point = c.points.find((p) => p.x === reboundPrice);
+    const point = c.points.find((p) => p.x === bottomPrice);
     return { name: c.name, label: c.label, profit: point?.y ?? 0 };
   });
 
   // Drag handlers
-  const updateReboundFromMouse = (e: React.MouseEvent<HTMLDivElement>) => {
+  const updateBottomFromMouse = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const ratio = x / rect.width;
     const rawPrice = xMin + ratio * xRange;
     const snapped =
-      Math.round((rawPrice - xMin) / config.reboundStep) * config.reboundStep +
+      Math.round((rawPrice - xMin) / config.bottomStep) * config.bottomStep +
       xMin;
     const clamped = Math.max(xMin, Math.min(xMax, snapped));
-    onReboundChange(clamped);
+    onBottomChange(clamped);
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     isDraggingRef.current = true;
-    updateReboundFromMouse(e);
+    updateBottomFromMouse(e);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current) return;
-    updateReboundFromMouse(e);
+    updateBottomFromMouse(e);
   };
 
   const handleMouseUp = () => {
@@ -220,26 +220,26 @@ export function CurveChart({
                   />
                 ))}
 
-              {/* Vertical line at current rebound price */}
+              {/* Vertical line at current bottom price */}
               <line
-                x1={reboundX}
+                x1={bottomX}
                 y1="0"
-                x2={reboundX}
+                x2={bottomX}
                 y2={chartHeight}
                 stroke="rgba(16, 185, 129, 0.4)"
                 strokeWidth="1"
                 strokeDasharray="4 4"
               />
 
-              {/* Points at current rebound price */}
+              {/* Points at current bottom price */}
               {visibleCurves.map((c) => {
-                const point = c.points.find((p) => p.x === reboundPrice);
+                const point = c.points.find((p) => p.x === bottomPrice);
                 if (!point) return null;
                 const isCurrent = c.name === currentStrategyName;
                 return (
                   <circle
                     key={c.name}
-                    cx={reboundX}
+                    cx={bottomX}
                     cy={toSvgY(point.y)}
                     r={isCurrent ? 5 : 3}
                     fill={isCurrent ? "#10b981" : "#71717a"}
@@ -254,14 +254,14 @@ export function CurveChart({
                 (c) => c.name === currentStrategyName
               );
               const point = currentCurve?.points.find(
-                (p) => p.x === reboundPrice
+                (p) => p.x === bottomPrice
               );
               if (!point || !currentCurve) return null;
               const pct = Math.round(
                 (point.y / theoreticalMax) * 100
               );
               const leftPct =
-                ((reboundPrice - xMin) / xRange) * 100;
+                ((bottomPrice - xMin) / xRange) * 100;
               const topPct =
                 ((point.y - minProfit) / profitRange) * 100;
               const flipLeft = leftPct > 85;
@@ -297,12 +297,12 @@ export function CurveChart({
             <span
               className="absolute text-emerald-400 font-medium"
               style={{
-                left: `${((reboundPrice - xMin) / xRange) * 100}%`,
+                left: `${((bottomPrice - xMin) / xRange) * 100}%`,
                 transform: "translateX(-50%)",
                 top: 0,
               }}
             >
-              {formatUSD(reboundPrice)}
+              {formatUSD(bottomPrice)}
             </span>
           </div>
         </div>

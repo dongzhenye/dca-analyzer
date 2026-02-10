@@ -7,9 +7,9 @@ export interface SimulatorConfig {
   targetDate: string;
   priceLevels: number[];
   totalSize: number;
-  reboundMin: number;
-  reboundMax: number;
-  reboundStep: number;
+  bottomMin: number;
+  bottomMax: number;
+  bottomStep: number;
 }
 
 export interface Allocation {

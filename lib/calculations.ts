@@ -1,15 +1,15 @@
 import type { Allocation, PositionMetrics } from "./types";
 
-// When rebound price = X, all buy orders at prices >= X are "filled" (executed).
+// When bottom price = X, all buy orders at prices >= X are "filled" (executed).
 // Unfilled orders (price < X) remain pending — capital not deployed.
 // Profit = (targetPrice - avgCost) * totalHolding
 export function calculatePositionStats(
   allocations: Allocation[],
-  reboundPrice: number,
+  bottomPrice: number,
   targetPrice: number,
   totalSize: number
 ): PositionMetrics {
-  const filledLevels = allocations.filter((l) => l.price >= reboundPrice);
+  const filledLevels = allocations.filter((l) => l.price >= bottomPrice);
 
   if (filledLevels.length === 0) {
     return {

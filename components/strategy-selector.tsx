@@ -11,7 +11,7 @@ import { STRATEGY_ORDER, STRATEGY_LABELS } from "@/lib/strategies";
 interface StrategySelectorProps {
   activeStrategy: ActiveStrategy;
   activeAllocations: Allocation[];
-  reboundPrice: number;
+  bottomPrice: number;
   isCustomActive: boolean;
   activeWeightSum: number;
   onSelectPreset: (strategy: PresetStrategy) => void;
@@ -24,7 +24,7 @@ interface StrategySelectorProps {
 export function StrategySelector({
   activeStrategy,
   activeAllocations,
-  reboundPrice,
+  bottomPrice,
   isCustomActive,
   activeWeightSum,
   onSelectPreset,
@@ -73,7 +73,7 @@ export function StrategySelector({
       {/* Histogram with optional sliders */}
       <div className="space-y-2">
         {activeAllocations.map((level, index) => {
-          const isFilled = level.price >= reboundPrice;
+          const isFilled = level.price >= bottomPrice;
           const barWidth = Math.min(
             (level.weight / CONSTANTS.HISTOGRAM_SCALE_MAX) * 100,
             100

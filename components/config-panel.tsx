@@ -154,7 +154,7 @@ export function ConfigPanel({
           </p>
         </div>
 
-        {/* Section 4: Rebound Simulation Range */}
+        {/* Section 4: Bottom Price Simulation Range */}
         <div>
           <div className="flex items-center gap-2 mb-2">
             <label className="text-xs text-zinc-500">反弹模拟范围</label>
@@ -190,9 +190,9 @@ export function ConfigPanel({
 
                 onConfigChange({
                   ...config,
-                  reboundMin: newMin,
-                  reboundMax: newMax,
-                  reboundStep: niceStep,
+                  bottomMin: newMin,
+                  bottomMax: newMax,
+                  bottomStep: niceStep,
                 });
               }}
               className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors"
@@ -205,17 +205,17 @@ export function ConfigPanel({
               <label className="text-xs text-zinc-600">最低价</label>
               <input
                 type="number"
-                value={config.reboundMin || ""}
+                value={config.bottomMin || ""}
                 onChange={(e) =>
                   onConfigChange({
                     ...config,
-                    reboundMin: Number(e.target.value) || 0,
+                    bottomMin: Number(e.target.value) || 0,
                   })
                 }
                 onBlur={(e) => {
                   const val = Number(e.target.value);
                   if (!val || val < 1)
-                    onConfigChange({ ...config, reboundMin: 1 });
+                    onConfigChange({ ...config, bottomMin: 1 });
                 }}
                 className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm font-mono focus:outline-none focus:border-emerald-500"
               />
@@ -224,17 +224,17 @@ export function ConfigPanel({
               <label className="text-xs text-zinc-600">最高价</label>
               <input
                 type="number"
-                value={config.reboundMax || ""}
+                value={config.bottomMax || ""}
                 onChange={(e) =>
                   onConfigChange({
                     ...config,
-                    reboundMax: Number(e.target.value) || 0,
+                    bottomMax: Number(e.target.value) || 0,
                   })
                 }
                 onBlur={(e) => {
                   const val = Number(e.target.value);
                   if (!val || val < 1)
-                    onConfigChange({ ...config, reboundMax: 1 });
+                    onConfigChange({ ...config, bottomMax: 1 });
                 }}
                 className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm font-mono focus:outline-none focus:border-emerald-500"
               />
@@ -243,17 +243,17 @@ export function ConfigPanel({
               <label className="text-xs text-zinc-600">步长</label>
               <input
                 type="number"
-                value={config.reboundStep || ""}
+                value={config.bottomStep || ""}
                 onChange={(e) =>
                   onConfigChange({
                     ...config,
-                    reboundStep: Number(e.target.value) || 0,
+                    bottomStep: Number(e.target.value) || 0,
                   })
                 }
                 onBlur={(e) => {
                   const val = Number(e.target.value);
                   if (!val || val < 1)
-                    onConfigChange({ ...config, reboundStep: 1 });
+                    onConfigChange({ ...config, bottomStep: 1 });
                 }}
                 className="w-full mt-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm font-mono focus:outline-none focus:border-emerald-500"
               />
@@ -277,13 +277,13 @@ export function ConfigPanel({
                 `目标价 (${formatUSD(config.targetPrice)}) 应高于最高建仓价 (${formatUSD(maxLevel)})`
               );
             }
-            if (config.reboundMax < minLevel) {
+            if (config.bottomMax < minLevel) {
               warnings.push(
-                `反弹最高价 (${formatUSD(config.reboundMax)}) 应不低于最低建仓价 (${formatUSD(minLevel)})`
+                `反弹最高价 (${formatUSD(config.bottomMax)}) 应不低于最低建仓价 (${formatUSD(minLevel)})`
               );
             }
           }
-          if (config.reboundMin >= config.reboundMax) {
+          if (config.bottomMin >= config.bottomMax) {
             warnings.push("反弹最低价应小于最高价");
           }
 
