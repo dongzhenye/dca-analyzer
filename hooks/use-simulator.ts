@@ -16,9 +16,10 @@ import {
 } from "@/lib/strategies";
 import { calculatePositionStats } from "@/lib/calculations";
 import { analyzeStrategyAdvice } from "@/lib/advice";
+import { adjustBottomPrice } from "@/lib/bottom-price";
 
 export function useSimulator() {
-  const [config, setConfig] = useState<SimulatorConfig>(DEFAULT_CONFIG);
+  const [config, setConfigState] = useState<SimulatorConfig>(DEFAULT_CONFIG);
 
   // Filter out empty price levels (price = 0)
   const activePriceLevels = useMemo(
@@ -83,38 +84,17 @@ export function useSimulator() {
     );
   });
 
-  // Auto-adjust bottomPrice when bottom range changes
-  useEffect(() => {
-    const { bottomMin, bottomMax, bottomStep } = config;
-    if (bottomMin >= bottomMax || bottomStep <= 0) return;
-
-    const middle = (bottomMin + bottomMax) / 2;
-    const alignedMiddle =
-      Math.round((middle - bottomMin) / bottomStep) * bottomStep +
-      bottomMin;
-    const clampedMiddle = Math.max(
-      bottomMin,
-      Math.min(bottomMax, alignedMiddle)
-    );
-
-    setBottomPrice((currentPrice) => {
-      const alignedPrice =
-        Math.round((currentPrice - bottomMin) / bottomStep) * bottomStep +
-        bottomMin;
-      const clampedPrice = Math.max(
-        bottomMin,
-        Math.min(bottomMax, alignedPrice)
-      );
-
-      if (currentPrice < bottomMin || currentPrice > bottomMax) {
-        return clampedMiddle;
-      }
-      if (clampedPrice !== currentPrice) {
-        return clampedPrice;
-      }
-      return currentPrice;
-    });
-  }, [config.bottomMin, config.bottomMax, config.bottomStep]);
+  // Update related state together when the user changes the simulation range.
+  const setConfig = (nextConfig: SimulatorConfig) => {
+    if (
+      nextConfig.bottomMin !== config.bottomMin ||
+      nextConfig.bottomMax !== config.bottomMax ||
+      nextConfig.bottomStep !== config.bottomStep
+    ) {
+      setBottomPrice((currentPrice) => adjustBottomPrice(currentPrice, nextConfig));
+    }
+    setConfigState(nextConfig);
+  };
 
   // Keyboard arrow keys to adjust bottom price
   useEffect(() => {
