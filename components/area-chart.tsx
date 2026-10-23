@@ -36,7 +36,6 @@ export function AreaChart({
   onSelectCustom,
 }: AreaChartProps) {
   const t = useTranslations("chart");
-  const ts = useTranslations("strategy");
 
   // Y-axis: price range from bottomMin to targetPrice
   const priceRange = config.targetPrice - config.bottomMin;
